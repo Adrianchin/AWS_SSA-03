@@ -339,3 +339,59 @@ How it works
 - Can create an organizational trail and track all accounts in the organization to manage multiple accounts in an org.
 - NOT REAL TIME! There is a delay.
 
+>Video 10
+### AWS Control Tower
+- Allow the quick and easy setup of multi-account environment
+- Orchestrates other AWS services to provide this functionality
+- Organizations, IAM Identity Center, CloudFormation, Config and more....
+  1) Landing Zone - Multi-account environment. 
+    - SSO/ID Federation, Centralization of logging and auditing
+  2) Guard Rails - Detect/Mandates rules/standards across all accounts
+  3) Account Factory - Automates and Standardises new account creation
+  4) Dashboard - Single page oversight of the entire environment
+- How it works
+  - Control tower is managed inside the Management Account
+    - Single Sign On (SSO) operates inside the management account that allows Federation ID and internal ID signon
+  - AWS Organizations creates 2 OU's
+    1) Foundational OU
+       1) Audit account
+          - SNS, Cloudwatch for auditing
+       2) Log Archive Account
+          - AWS Config, CloudTrail for Archive
+    2) Custom OU 
+       - Account Factory Provisioned Accounts 
+         1) Account Baseline (template) - Provides guardrails
+            - Templates you configure for account creation
+         2) Network Baseline (template) - Provides guardrails
+            - Templates you configure for account creation
+
+#### Control Tower - Landing Zone
+- Well Architected multi-account environment - Home Region
+- Built with AWS Organizations, AWS Config and CloudFormation
+- Security OU - Log Archive & Audit Accounts (CloudTrail and Config Logs)
+- Sandbox OU - Test/less rigid security
+- You can create other OUs and accounts
+- IAM Identity Center (AWS SSO) - SSO, Multiple-Accounts, ID Federation
+- Monitoring and Notifications - CloudWatch and SNS
+- End User account provisioning via Service Catalog
+
+#### AWS Control Tower - Guard Rails
+- Guardrails are rules - multi-account governance
+- Types: 
+  1) Mandatory
+  2) Strongle Recommended 
+  3) Elective
+- Preventive - stops you from doing things (AWS ORG SCP)
+  - Enforced or not enabled (ie. allow or deny regions. disallow bucket policy changes)
+- Detective - Compliance checks (AWS CONFIG Rules)
+  - Clear, in violation or not enabled (ex. detect if CloudTrails is enabled)
+
+#### AWS Control Tower - Account Factory
+- Automated Account Provisioning
+  - ex. Creations of cloud admins or end users (with approprate permissions)
+- Guardrails - automatically added
+- Account admin given to a named user (IAM Identity Center)
+- Account and network standard configuration
+- Accounts can be closed or altered
+- Can be fully integrated with businesses Software Development Life Cycle (SDLC)
+
