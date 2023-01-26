@@ -160,7 +160,7 @@ CloudWatch ingests AWS Service data and generates metrics. This can be used to m
 3) TTL - Time To Live
     - This is a number that allows an authoritative answer that is cached on a server, which allows users to avoid walking the tree by accessing the cache.
 
-Walking the tree
+### Walking the tree with TTL and name servers
 1) Client queries resolver
 2) Resolver queries DNS root and returns the Authoritative servers (ex. .com)
 3) Resolver queries Authoritative server (ex. .com) and returns the name server (ex. amazon.com)
