@@ -379,7 +379,7 @@ How it works
 - Guardrails are rules - multi-account governance
 - Types: 
   1) Mandatory
-  2) Strongle Recommended 
+  2) Strongly Recommended 
   3) Elective
 - Preventive - stops you from doing things (AWS ORG SCP)
   - Enforced or not enabled (ie. allow or deny regions. disallow bucket policy changes)
@@ -395,3 +395,49 @@ How it works
 - Accounts can be closed or altered
 - Can be fully integrated with businesses Software Development Life Cycle (SDLC)
 
+### Simple Storage Service (S3)
+> Video 1
+#### S3 Security
+- S3 is private by default
+- #### S3 Bucket Policies
+  - A form of resource policy
+  - Link identity policies, but attached to a bucket. Resource permissions
+  - Allow/Deny same or different accounts
+  - Allow/Deny anonymous principals (unknown access, for example files and images for a web application)
+  - #### Same as identity policies but contain a principal
+    - Principle - Defines which identity this policy applies to
+    - ex. "Principal" : "*" <- applies to everyone (the account itself, other accounts (partner accounts) and unknown principles (anonymous))
+    - Can be combined with Conditions to do conditional logic (for example, a condition can say a policy only applies if the condition is met, so you can say, block specific accounts or IP addresses)
+  - Can only have 1 policy attached to a bucket, but multiple statements in the policy
+  - Remember, your bucket policy applies with the sum of the principles identity policy too
+
+- #### ACLs (access control lists)
+  - Not recommended, as they are not flexible. Identity or resource policies should be used.
+  - Only allows the following:
+    1) READ - Allows grantee to list objects in bucket
+    2) WRITE - Allows grantee to create, delete and modify objects in bucket
+    3) READ_ACP - Allows grantee to read bucket ACL
+    4) WRITE_ACP - Allows grantee to write the ACL for the bucket
+    5) FULL_CONTROL - Allows full control of bucket
+
+- #### Block Public Access
+  - Added a further level of security to a bucket. A final fail-safe
+  - Blocks all access to the bucket on default
+    - Further settings can block access based on different cases.
+
+### Exam Power Up
+- When to use what policy
+  - Identity policy: Controlling different resources (controlling all policies in 1 place)
+  - Identity policy: You have a preference for IAM 
+  - Identity policy: Same account
+  - Bucket policy: Just controlling S3
+  - Bucket policy: Anonymous or Cross Account
+  - ACLs policy: NEVER (unless you must)
+
+> Video 2
+#### S3 Static (website) Hosting
+- Normally you are accessing S3 via the AWS APIs (you are already logged in and authenticated)
+- Static hosting allows access via HTTP
+- Requires Index and Error documents to be set - points to a specific file in the S3 bucket. Need to be HTML files.
+- Website endpoint is created. The name is influenced by the bucket name that AWS provides
+- Can only use a custom domain via R53 if the bucket name matches the domain
