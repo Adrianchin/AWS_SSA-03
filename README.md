@@ -452,3 +452,86 @@ Example: Out-of-bound pages - Error pages if something fails or something is out
 
 > Video 2
 #### Object Versioning and MFA Delete
+- Controlled at a bucket level. Defaulted as disabled. Can be enabled.
+- Once enabled, it cannot EVER be disabled, but it can be suspended and re-enabled.
+- If disabled
+  - the object uses it's key and an Id = null. The object will be overwritten if the file is updated
+- If enabled with versioning:
+  - the key stays the same but an Id is assigned. Any new file with the same key will be assigned a unique Id and it will show on-top of the old version, but the old version will allways be there.
+  - If deleted, a delete marker will be placed on top of the previous versions.
+  - You can delete the actual version of the object, but you need to specify the Key and the Id.
+  - Space is consumed by all versions. You are billed for all versions. The only way to remove all the space is to remove all versions.
+  - You can only suspend versioning.
+- #### MFA Delete
+  - Enabled in versioning configuration
+  - An MFA is required to change bucket versioning state
+  - An MFA is required to delete versions
+  - Serial number (MFA) + Code passed with all API Calls.
+
+>Video 3
+#### S3 Performance Optimization
+#### Single Put upload (Default)
+- Files are uploaded as a single data stream
+  - If file fails, it requires a full restart. The entire file fails. 
+  - Speed is limited to 1 stream, so it is slower and less reliable
+  - Limited to 5GB upload
+#### Multipart Upload
+- Data is broken up. This is what BitTorrent uses
+  - Minimum data size is 100MB for multipart
+  - 10,000 max parts, 5MB to 5GB sizes
+  - Last part can be smaller than 5MB
+  - Parts can fail and be restarted
+  - Transfer rate = speed of all parts
+
+#### Accelerated Transfer (OFF by default)
+- Uses AWS Transfer Acceleration 
+- Connects to edge locations and uses the AWS network instead of using the normal internet connections to access the S3 bucket
+  - Bucket name cannot contain periods
+  - Bucket needs to be DNS compatible
+
+>Video 4
+#### Key Management Service (KMS)
+- Regional and public service
+- Creates, stores and manages keys
+- Manages Symmetric and Asymmetric keys
+- Cryptographic operations 
+- #### Keys NEVER leave KMS. Provides FIPS 140-2 (L2) service (US level cert for safety)
+- Called KMS keys (used to be called Customer Managed Keys, CMKs)
+  - KMS Keys contain Id, Date, Policy, Description and State. Backed by physical key material
+  - Generated or imported
+  - Can be used for up to 4KB of data
+
+How it works:
+1) CreateKey - Key is created (or placed) in KMS
+2) Encrypt call - Specifies what key to use and sends data to encrypt. KMS accepts the data, and uses the key to encrypt data if certs are good. Data is returned
+3) Decrypt call - Data encrypt is sent to KMS. Key data is included inside the data and KMC knows what key to use to decrypt. KMC uses the key to decrypt the data and is returned to the user.
+
+During this entire process, the Key NEVER leaves KMS. The user needs permissions to make calls to KMS (role separation)
+
+#### Data Encryption Keys (DEKs)
+- A type of key KMS can generate using KMS keys
+- GeneratedDataKey - works on data that is > 4KB
+- KMS does not store the DEK in any way. It just provides a DEK to the user/service for use and it is then thrown away.
+- How it works
+  1) A plaintext version and a ciphertext version of the key is provided to you or the server
+  2) The plaintext version is used to encrypt the file
+  3) The ciphertext version is attached to the file
+  4) The file is stored with the ciphertext version and the plain text version is thrown away
+- To decrypt
+  1) Send the ciphertext key to KMS
+  2) KMS will use the KMS key and decrypt the ciphertext key. The decrypted encryption key is provided back
+  3) The decrypted encryption key is used to decrypt the data and is the discarded
+- You are responsible for the DEK storage
+
+To summarize:
+1) KMS Keys are isolated to a region and never leave
+2) KMS keys can be AWS Owned and Customer Owned
+3) Customer managed keys are more configurable
+4) KMS Keys support rotation - AWS managed KMS are auto rotated (cant be configured) but Customer Managed Keys can be configured
+5) KMS Keys contain backing keys and previous backing keys (so new keys can be used on things with rotated keys that have been changed already)
+
+#### Key Policies and Security
+- Key policies (resource policy). Every key has one
+  - KMS Key policies can be updated. This provides information to KMS on what is allowed to access the KMS key.
+- Can use Key policies + IAM policies for managing KMS Keys. For more security, only using Key policies may be required. This will prevent admin from doing specific actions (say encrypt only)
+
