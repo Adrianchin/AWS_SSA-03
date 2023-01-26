@@ -795,4 +795,15 @@ The 2 options between no select and select
 
 ### Virtual Private Cloud (VPC) Basics
 >Video 1
-#### VPC Sizing and structure
+#### VPC Sizing and structure 
+- Need to think about the size of the VPC
+- Networks you cannot use
+- Ranges that other VPC's, Cloud, On-premises, Partners and Vendors use
+- Predict the future
+- Structure of the VPC - Ex. Tiers (Public and Private) & Resiliency (AZ)
+- Minimum:
+  - /28 (16IPs)
+- Maximum
+  - /16 (65536 IPs)
+- Avoid common ranges
+
