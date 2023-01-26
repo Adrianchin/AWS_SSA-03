@@ -748,3 +748,51 @@ For example, if a web application needs a presignedURL, we can create an IAM Use
 The 2 options between no select and select
 - Download the entire object and filter on app
 - Filter in S3 (with S3/Glacier select) before its transferred to the application
+
+>Video 12
+#### S3 Events
+- When enabled, a notification is generated when an event occurs in a bucket
+- Can deliver messages to SNS, SQS and Lambda functions
+  - Objects Created (Put, Post, Copy, CompleteMultiPartUpload)
+  - Objects Delete (*, Delete, DeleteMarkerCreated)
+  - Objects Restore (Post (initiated), Complete)
+  - Replication (OperationMissedThreshold, OperationReplicatedAfterThreshold, OperationNotTracked, OperationFailedReplication)
+- Used with an Event Notification Config
+- Require resource policies allowing S3 Principal Access 
+- Event notification messages are JSON objects
+- Can also use EventBridge as an alternative <- good alternative
+
+>Video 13
+#### S3 Access logs
+- You can configure a S3 Log Delivery Group to listen to the source bucket and detect when the source bucket and it's objects are accessed. These interactions are then logged and saved in a target bucket.
+- Configure/enabled via the console UI or via PUT Bucket Logging
+- You need to configure a bucket ACL to allow S3 Log Delivery Group
+- Requires you to manage the log files, no automated deletion etc.
+
+>Video 14
+#### S3 Object Lock 
+- A group of features you enable on new buckets (Support requests for existing buckets)
+- Implements a Write-Once-Read-Many (WORM) 
+  - No delete, No overwrite
+- Requires versioning - Individual versions are locked
+- Has 2 things
+  1) Retention Period
+     - Specify Days and Years for a retention period
+     - Modes:
+       1) Compliance 
+          - Cannot be adjusted, deleted or overwritten. 
+          - No changes can be done during the retention period, not even the account root user
+       2) Governance Mode
+          - Special permissions can be granted allowing lock settings to be adjusted
+            - s3:BypassGovernanceRetention AND
+            - x-amz-bypass-governance-retention:true (default for console ui)
+  2) Legal Hold
+     - You do not set a retention period. It can only be turned on or off.
+     - No deletes or changes until removed
+       - s3:PutObjectLegalHold is required to add or remove
+- Will have both, one or the other, or none
+- A bucket can have default Object Lock Settings
+
+### Virtual Private Cloud (VPC) Basics
+>Video 1
+#### VPC Sizing and structure
