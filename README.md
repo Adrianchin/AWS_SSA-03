@@ -441,3 +441,14 @@ How it works
 - Requires Index and Error documents to be set - points to a specific file in the S3 bucket. Need to be HTML files.
 - Website endpoint is created. The name is influenced by the bucket name that AWS provides
 - Can only use a custom domain via R53 if the bucket name matches the domain
+- Priced based on:
+  1) Storage (per GB/month)
+  2) Data transferred (GB transferred out only) 
+  3) Anount of requests
+     - Note: There is a free amount of requests on the free tier, so you can host files and get very few charges.
+
+Example: If a website has static content (such as images), you can host the images on S3 and host these images statically. This can accept HTTP requests and return the static content without impacting compute resources.
+Example: Out-of-bound pages - Error pages if something fails or something is out of bounds (ex. contact x for help)
+
+> Video 2
+#### Object Versioning and MFA Delete
