@@ -584,3 +584,167 @@ Buckets are not encrypted, objects are.
   - You can set a default setting on bucket default.
     - Default encryption is AES256
     - You can also use a bucket policy to specify the encryption type.
+
+>Video 6
+#### S3 Object Storage Classes
+
+#### S3 Standard (default)
+- #### Used for frequently accessed data that is important and non-replaceable - Super durable
+- Stored across 3 AZ's in the AWS region with replication and Content-MD5 Checksums and Cyclic Redundant Checks (CRCs) to detect data corruption
+- For upload of object in S3: Responds with HTTP/1.1 200 OK response
+- Objects can be made publicly available
+- "milliseconds" first byte latency - fast
+  - Costs: 
+    - GB/month for data stored
+    - $ per GB for transfer OUT
+    - Price/1000 requests
+    - No specific retrieval fee, no minimum duration, no minimum size
+
+#### S3 Standard-IA (Infrequent Access)
+- #### Used for long-lived data which is important but access is infrequent
+- Same as S3 Standard but differences:
+  - Cheaper than S3 Standard
+  - New cost: Cost per GB data retrieval fee
+    - Cost increased with frequent data access
+  - Minimum duration charge of 30 days
+  - Has minimum capacity charge of 128KB/Object
+
+#### S3 One Zone-IA (Infrequent Access)
+- #### Long-lived data which is NON-CRITICAL and REPLACEABLE where access is infrequent
+- Same as S3 Standard-IA but differences:
+    - Cheaper than S3 Standard-IA
+    - Only in 1 AZ - Does not provide multi-AZ resilience model of Standard and Standard-IA. High durability (same as others) but no redundancy - could lose it
+
+>Video 7
+
+#### S3 Glacier - Instant
+- #### Long-lived data which is accessed once per quarter with millisecond access
+- Cheap
+- Same as S3 Standard-IA but differences:
+  - Minimum duration charge of 90 days
+  - Has minimum capacity charge of 128KB/Object
+  - Costs more if you access the data, less if you don't
+
+#### S3 Glacier - Flexible 
+- #### Archival data where frequent or realtime access is NOT needed (e.g. use yearly). Minutes - hours retrieval
+- Super Cheap
+- Same as S3 Standard but differences:
+  - Objects are cold - Objects cannot be made publicly. This requires a retrieval process to restore to S3 Standard-IA
+    - Retrieval costs money. Faster is more expensive:
+      - Expedited - 1-5 minutes
+      - Standard - 3-5 hours
+      - bulk - 5-12 hours
+    - 40KB minimum size
+    - 90 day minimum duration
+
+#### S3 Glacier Deep Archive
+- #### Archival data where it is rarely accessed. Ex. Legal or Regulation Data storage
+- Cheapest
+- Same as S3 Glacier - Flexible but differences:
+    - Objects are cold - Objects cannot be made publicly. This requires a retrieval process to restore to S3 Standard-IA
+        - Retrieval costs money. Faster is more expensive:
+            - Standard - 12 hours
+            - bulk - up to 48 hours
+        - 40KB minimum size
+        - 180 day minimum duration
+
+#### S3 Intelligent-Tiering - Action Based
+- #### S3 Intelligent-Tiering used for long-lived data where there are changing or unknown patterns of access
+- There are no retrieval fees for accessing objects
+- Allows storage with the following active changes to:
+  - Frequent Access (S3 Standard)
+  - Infrequent Access Tier (No access after 30 days)
+  - Archive Instant Access (No access for 90 days)
+  - Archive Access (No access for 90 - 270 days)
+  - Deep Archive Access (No access for 180 - 730 days)
+- These objects will be moved actively when they are accessed. You pay for management fee (per 1000 objects)
+
+>Video 8
+#### S3 Lifecycle Configuration - Time based
+- S3 Lifecycle Configuration is a set of rules applied to a bucket or a group of objects
+- Rules consist of actions:
+  - Transition Actions (ex. transition to IA after 30 days and glacier after 180 days)
+  - Expiration Actions (delete a file after n time period)
+- Note: THESE ARE NOT BASED ON ACTIONS
+- Transition Process: Goes from top down. You cannot go up, only down.
+  1) S3 Standard (in lifecycle configuration, you need to wait a minimum 30 days before transition)
+  2) S3 Standard-IA (in lifecycle configuration, you need to wait another minimum 30 days before transition to Glacier classes)
+  3) S3 Intelligent-Tiering 
+  4) S3 One Zone-IA (in lifecycle configuration, you need to wait another minimum 30 days before transition to Glacier classes)
+  5) S3-Glacier - Instant Retrieval
+  6) S3 Glacier - Flexible Retrieval
+  7) S3 Glacier Deep Archive
+- Smaller jobs can cost more money due to minimum sizes
+
+>Video 9
+#### S3 Replication
+- Allows replication of a source S3 bucket to a destination bucket
+- 2 Types:
+  1) Cross Region Replication (CRR)
+     - Replication of a source S3 bucket to a destination bucket in a different region
+  2) Same Region Replication (SRR)
+     - Replication of a source S3 bucket to a destination bucket in the same region
+- Buckets can be in the same account or a different account
+  - A replication configuration is applied to the source bucket to specify the
+    1) IAM Role to be used
+    2) The destination bucket to replicate to
+  - Roles used to determine replication between source and destination buckets
+    - Same Account 
+      - Both buckets trust IAM and the Buckets and the Role. IE. The role just needs access to the buckets
+    - Different Account
+      - The bucket in the source account is not trusted by the other bucket, so a bucket policy will also need to be added to reference and allow the source bucket
+#### Replication Options
+1) All objects or a subset of objects
+2) Which storage class in the new bucket to use - Default is the same class as the source bucket (can be overwritten)
+3) Ownership - Default is to be owned by the source account (can be overwritten)
+4) Replication Time Control (RTC) - Guaranteed level of predictability (15 min sync time Guaranteed)
+
+### Exam Power Up
+- Replication is not retroactive and versioning needs to be on. 
+  - A bucket that already had objects in it will NOT have the objects in it replicated to the new bucket
+- One-Way replication only.
+- Unencrypted, SSE-S3 and SSE-KMS (with extra configuration). 
+  - NOT able to replicate SSE-C
+- Source bucket owner needs permission to the objects (only if the source account owns the objects, so if an object was placed in there that the owner does not have access to, there is no replication)
+- No system events, Glacier or Glacier Deep Archive replication
+- NO DELETES - Delete markers are not replicated, but it can be configured
+
+#### Why use replication? (Same Region Replication vs Cross Region Replication)
+1) SSR - Log Aggregation
+2) SSR - Production to Test Sync
+3) SSR - Resilience with strict sovereignty 
+4) CRR - Global Resilience Improvements
+5) CRR - Latency Reduction
+
+> Video 10
+#### S3 Presigned URLs
+- A way to give people access to your private S3 bucket that they couldn't normally access
+- Options to give someone access
+  1) Give AWS Identity
+  2) Provide AWS Credentials
+  3) Make public
+  4) use Pre-signed URLs
+
+How to generate presignedURLs
+1) Admin request S3 to generate presignedURL with a expiry date/time
+2) S3 returns a presignedURL configured to expire at a specific date and time. This URL contains information about the permissions for the bucket that matches the admin who requested it
+3) The presignedURL can be sent to an unauthenticated user
+4) The user can use the URL to access the bucket with the permissions provided while the presignedURL is valid
+
+For example, if a web application needs a presignedURL, we can create an IAM User for this 1 server (single principle) to allow it to create a presignedURL from the S3 bucket. This can create a presignedURL to provide access to the unknown user without the user authenticating
+
+#### Exam Power Ups
+1) You can create a presignedURL for an object you have no access to. Since it is linked to the user, it will have no access also (it has the same access as you)
+2) The presignedURL permissions match the identity that generates it
+3) Access denied could mean that the generating ID never had access, or it does not have access anymore (access changed)
+4) Don't generate with a role. URL stops working when temporary credentials expire. (Roles are temporally provided, so when the role STS token access ends, so does the presignedURL - could cut the validity of the URL short)
+
+>Video 11
+#### S3 Select and Glacier Select 
+- Normally, when you access an object (say a max size object of 5TB) you need to download the entire thing. You cant partially download something if you only needed part of it.
+- S2/Glacier select lets you use SQL-Like statements to select part of an object, and only the pre-filtered selected part of the object is provided.
+  - CSV, JSON, Parquet, BZIP2 compression for CSV and JSON
+
+The 2 options between no select and select
+- Download the entire object and filter on app
+- Filter in S3 (with S3/Glacier select) before its transferred to the application
