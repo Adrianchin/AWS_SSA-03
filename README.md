@@ -167,3 +167,4 @@ CloudWatch ingests AWS Service data and generates metrics. This can be used to m
 4) Resolver queries the name server (ex. .com) and returns the record for your domain (ex. www.animals4lyfe.com) and contains a TTL, which is the authoritative answer
 5) Authoritative answer is cached for the TTL time, so the results of the query are stored for x TTL seconds, which can be queried by other clients and avoid walking the tree.
 
+
