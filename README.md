@@ -553,7 +553,7 @@ Buckets are not encrypted, objects are.
 3) The key is thrown away
 4) When you decrypt, you need to supply the same key. The object hash is checked against the provided key and only decrypted if the hash matches.
 
-#### Server-Side Encryption with Amazon S3-Managed Keys (SSE-S3) - AES256
+#### Server-Side Encryption with Amazon S3-Managed Keys (SSE-S3) - AKA AES256 - Good default security option
 - AWS (S3) manages the keys. You have no control over the keys. If someone is in full control of S3, they can technically access the plaintext data as they have access to the keys
 - S3 manages encryption
 1) Provide your object for upload to S3
@@ -563,8 +563,8 @@ Buckets are not encrypted, objects are.
 5) The unique key encrypted with the S3 root key and the plain text key is thrown away
 6) The object and the encrypted key are now stored side-by-side
 
-#### Server-Side Encryption with KMS Keys Stored in AWS Key Management Service (SSE-KMS)
-- AWS KMS manages the keys. 
+#### Server-Side Encryption with KMS Keys Stored in AWS Key Management Service (SSE-KMS) - More strict security
+- AWS KMS manages the keys. KMS Keys provide Customer control and Rotation control if required.
 - You can use customer supplied KMS keys for this, or AWS generated KMS keys
 - To access encryption, you need access to both KMS and S3. This provides role separation by KMS
 - S3 manages encryption
@@ -574,3 +574,13 @@ Buckets are not encrypted, objects are.
 4) The unique key is used to encrypt the object
 5) The unique key encrypted with the KMS root key and the plain text key is thrown away
 6) The object and the encrypted key are now stored side-by-side
+
+#### Bucket Default Encryption:
+- When putting objects:
+  - Header: x-amz-server-side-encryption
+    - Specifying AES256 - SSE-S3 used
+    - Specifying aws:kms - SSE-KMS used
+  - If no header specified, no encryption is used
+  - You can set a default setting on bucket default.
+    - Default encryption is AES256
+    - You can also use a bucket policy to specify the encryption type.
