@@ -177,8 +177,130 @@ CloudWatch ingests AWS Service data and generates metrics. This can be used to m
   - Effect: Allow or Deny
   - Action: Lists:
     - 1 Specific action (example Get, Put)
-    - Wild Cards (ex. ["S3:*"] <- allow all in S3) 
+    - Wild Cards (ex. ["s3:*"] <- allow all in S3) 
     - List of individual (multiple actions)
   - Resources: Individual resources or a list of resources this applies to
-- #### Explicit Deny > Explicit Allow > Implicit Deny. Default is Implicit Deny
+- #### Explicit Deny > Explicit Allow > Implicit Deny. 
+- Default is Implicit Deny
+
+### IAM Policies
+- AWS Collects all policies together that apply to a user and sums up all policies to grant access.
+- Policies can reference identities (ex users, resources). They cannot reference groups, as groups are not identities
+- 2 Types of policies: 
+  1) Inline-policies - Applying the policies to each user individually (ex. IAM user policy). Usually used for exceptional access rights
+  2) Managed-policies - Create a policy and attach it to a user (ex. for large # of users, for groups or roles)
+
+>Video 2
+### IAM Users
+- IAM Users are identities used for anything requiring Long-Term AWS access (ex. Humans, Applications or Service Accounts).
+#### - A single principle that needs to use an identity.
+- Authentication goes like this:
+  1) Authentication - A principal (user or an application) requests access to IAM with Authentication. This is used with Username and Password (U&P - usuers) or Access Keys (application or user using Command Line Tools)
+  2) Authorization - AWS knows the policies that are attached to the Authenticated user and will check the policies whenever an action is done on the authenticated user 
+
+### Amazon Resource Name (ARN) 
+- Uniquely identify resources within any AWS account
+  - Example: arn:aws:s3:::catgifs <- refers to the bucket itself. This does not provide access to the objects itself
+  - Example: arn:aws:s3:::catgifs/* <- refers to Objects inside the bucket. This does not provide access to the bucket itself
+  - You may need to include both if you need access to the bucket itself AND objects inside
+- Examples:
+  - (arn):(partition):(service):(region):(account-id):(resource-id)
+  - (arn):(partition):(service):(region):(account-id):(resource-type)/(resource-id)
+  - (arn):(partition):(service):(region):(account-id):(resource-type):(resource-id)
+## Exam PowerUp
+- 5,000 IAM User limit per account
+- IAM Users can be a member of a max of 10 groups
+
+These limits could impact design choices
+- IAM Roles and Identity Federation can fix these limits
+
+>Video 2
+### IAM Groups
+- IAM Groups are containers for Users. They are not true identities and cannot be referenced in policies.
+- You cannot log into groups. 
+- They have no credentials. 
+- They are for organizing users
+- Users can be part of multiple groups
+- Groups have managed policies attached to them. Users can therefore be governed by the sum of:
+  - Inline (users own individually attached policies)
+  - Managed (from group memberships)
+- There is no limit to the # of users in an IAM group
+- You could create a group that manages all users, but it does not come natively
+- No nesting allowed
+- 300 limit per account, with a 500 limit with a support ticket
+#### - Since groups are not a true identity, they CANNOT be referenced as a principal in a policy
+
+>Video 3
+### IAM Roles
+- Where an unknown number of users or principles that need to use an identity.
+- A principal uses a role by assuming the role. The principle is borrowing the identity for a short period of time.
+- Roles are identities which can be referenced by other policies
+#### - Have 2 types of policies attached:
+1) Trust Policy
+   - Controls what principles can assume the role. 
+   - Can reference different things. 
+     - Resources in the account (ARN Numbers) or other accounts
+     - External identities (example from Facebook, Google)
+     - Creates temporary security credentials via Secure Token Service (STS) for the principle to assume the role
+2) Permission Policy
+   - Whenever actions using the temporary credentials are used, access is checked against the permission policy
+   - If you change the permission policy, the permissions of the temporary credentials also change
+
+>Video 4
+### When to use IAM Roles
+- For AWS Services themselves, for example, where you do not know the # of instances
+  - Ex. AWS Lambda has no permissions by default. It needs some way to get permissions for accessing other services.
+    - Create a Lambda Execution role, which has permission policies
+    - When the STS provides temporary credentials and accesses AWS resources the policies are checked and the Lambda Function can complete the task
+    - Prevents you needing to manually assign policies, which does not work well with automation
+- For users to get emergency access to AWS services outside the access provided by their normal policies (Ex. read but no write access)
+- Identity Federation - For large corporations larger than 5000 users or existing identities from on-premises using Identity Federation
+  - Ex. Existing identities using Active Directory from on-premises identity services (AWS requires AWS IAM and it CANNOT directly use external identity, so assume a role)
+- Web Federation - Unknown amount of users that need to access services (Ex. Web app that needs access to a DB or S3). Allows unknown principles to assume the role.
+    - Scales to 100,000,000's of accounts
+- Cross account access (multi account management)
+  - Ex. If you have 1000's of identities that need to access to a partner account, a role can be assumed in the partner account by users from your account
+
+>Video 5
+### Service Linked Roles
+- IAM Role linked to a Specific AWS Service
+- Predefined by a service
+- Providing permissions that a service needs to interact with other AWS services on your behalf
+- Service might create/delete the role, or allow you to create/delete the role during setup or within IAM
+- You cannot delete the role until it is no longer required
+- #### AKA providing a role the ability to make a role
+- Allows role separation: You can provide access to users to make new roles with access that the current user does not currently have
+
+>Video 6
+### AWS Organizations
+- Allows management of many AWS accounts under an organization 
+- An organization has only 1 Master account or Organizational Root account (different from an account root user)
+- Organizations can be made inside organizations called Organizational Units (OU) to nest organizations inside organizations
+1) Use an account to create an organization
+2) The account used to create the organization become the Management Account
+3) Using the management account, you can invite standard accounts into the organization
+4) When the standard organization accepts the invite, they become a member account of the organization
+- Allows Consolidated billing. 
+  - Members inside an organization account have their payment method removed and use the Organizational Root account for all billing
+  - Removes financial overhead so all billing can be managed by the Organizational Root user
+  - Consolidation allows for grouping of reservations (EC2 reservations) and volume discounts among all organizational members
+- Can create new accounts directly in an organization.
+  - Removes the need to approve an invite to an organization
+- You can use a method called Role Switch to assume roles using one account and assuming a role in another organizational account
+  - Can use Identity federation to log into an account and then use role switch
+  - Can log into an account normally and use role switch
+- Best practice is to separate the Organization Root User account for billing only and to create an organization account for admin purposes
+
+>Video 7
+### Service Control Policies
+- SCP do NOT provide permissions. The only provide boundaries.
+- Service Control Policies (SCP) are policies that can be attached to the organization as a whole, to Organizational Units (OU) or to member accounts themselves
+- Affect everything under it (nested OU's)
+- The SCP does NOT affect the master management account - no restrictions
+- They can limit what the accounts can do under the SCP - This includes the account root user INSIDE the account affected by the SCP (restricts what the account can do, the account root user has 100% access to the account)
+- This is just an allow/deny list. The default policy is a implicit deny list
+  - A deny list is useful because you can explicitly deny resources and its low overhead
+  - Explicit allow is useful because it requires you to explicitly say what services are allowed, but it could require more admin because it implicitly denys anything not on allow list
+- The Identity Policies in the Account and the SCP(s) are summed together to determine what the user in an account can access. Remember, sum of policies.
+
 
