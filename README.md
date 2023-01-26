@@ -535,3 +535,42 @@ To summarize:
   - KMS Key policies can be updated. This provides information to KMS on what is allowed to access the KMS key.
 - Can use Key policies + IAM policies for managing KMS Keys. For more security, only using Key policies may be required. This will prevent admin from doing specific actions (say encrypt only)
 
+>Video 5
+#### S3 Object Encryption
+Buckets are not encrypted, objects are.
+- When you upload to S3 , it is encrypted automatically- Encryption in Transit
+- Client-Side Encryption
+  - You encrypt before you send, so AWS never gets to see unencrypted data
+  - You do not rely on S3 for trusting their encrypting
+- Server-Side Encryption
+  - Objects themselves are encrypted by AWS. You trust AWS with your data
+
+#### Server-Side Encryption with Customer-Provided Keys (SSE-C)
+- Customer manages the customer keys
+- S3 manages encryption
+1) Provide the encryption key with your object upon upload
+2) Object is encrypted with the key and a 1-way hash is generated
+3) The key is thrown away
+4) When you decrypt, you need to supply the same key. The object hash is checked against the provided key and only decrypted if the hash matches.
+
+#### Server-Side Encryption with Amazon S3-Managed Keys (SSE-S3) - AES256
+- AWS (S3) manages the keys. You have no control over the keys. If someone is in full control of S3, they can technically access the plaintext data as they have access to the keys
+- S3 manages encryption
+1) Provide your object for upload to S3
+2) S3 creates a single root key to encrypt objects in the S3 bucket
+3) S3 creates a unique key for each object uploaded to S3
+4) The unique key is used to encrypt the object
+5) The unique key encrypted with the S3 root key and the plain text key is thrown away
+6) The object and the encrypted key are now stored side-by-side
+
+#### Server-Side Encryption with KMS Keys Stored in AWS Key Management Service (SSE-KMS)
+- AWS KMS manages the keys. 
+- You can use customer supplied KMS keys for this, or AWS generated KMS keys
+- To access encryption, you need access to both KMS and S3. This provides role separation by KMS
+- S3 manages encryption
+1) Provide your object for upload to S3
+2) KMS creates a single root key to encrypt objects in the S3 bucket. This is stored in KMS
+3) S3 creates a unique key for each object uploaded to S3
+4) The unique key is used to encrypt the object
+5) The unique key encrypted with the KMS root key and the plain text key is thrown away
+6) The object and the encrypted key are now stored side-by-side
