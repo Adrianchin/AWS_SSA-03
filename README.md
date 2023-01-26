@@ -167,4 +167,18 @@ CloudWatch ingests AWS Service data and generates metrics. This can be used to m
 4) Resolver queries the name server (ex. .com) and returns the record for your domain (ex. www.animals4lyfe.com) and contains a TTL, which is the authoritative answer
 5) Authoritative answer is cached for the TTL time, so the results of the query are stored for x TTL seconds, which can be queried by other clients and avoid walking the tree.
 
+## IAM and Organizations 
+>Video 1
+
+### Identity policies
+- Policy documents are created using JSON
+- Statements that grant or deny actions that grants access to resources
+  - Sid: Statement description
+  - Effect: Allow or Deny
+  - Action: Lists:
+    - 1 Specific action (example Get, Put)
+    - Wild Cards (ex. ["S3:*"] <- allow all in S3) 
+    - List of individual (multiple actions)
+  - Resources: Individual resources or a list of resources this applies to
+- #### Explicit Deny > Explicit Allow > Implicit Deny. Default is Implicit Deny
 
