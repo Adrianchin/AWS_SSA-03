@@ -303,4 +303,39 @@ These limits could impact design choices
   - Explicit allow is useful because it requires you to explicitly say what services are allowed, but it could require more admin because it implicitly denys anything not on allow list
 - The Identity Policies in the Account and the SCP(s) are summed together to determine what the user in an account can access. Remember, sum of policies.
 
+>Video 8
+### CloudWatch Logs
+- Public service - usable from AWS or on-premises
+- Store, monitor and access logging data. Usually timestamp and data.
+- AWS Integrations - Services in AWS or the unified cloudwatch agent for external services not covered in AWS
+- Can generate metrics based on logs. Metric Filter
+- Can generate alarms based on Metrics which actions can use
+
+How it works
+1) Logging sources push log events to AWS
+2) Log events are entered into a Log Stream
+  - Log events are ordered events for a specific thing (think a single EC2 instance)
+3) Log group - A group of log streams. (think a group of EC2 instances)
+4) Metric filters are placed on log groups
+5) Metric filters produce metrics
+6) Metrics can produce Alarms
+7) Alarms can have actions listening to it
+
+>Video 9
+### CloudTrail
+- Logs AWS account API calls/actions/activities as CloudTrail Events
+- Stores 90 days by default in Event History
+- Enabled by default. No cost for 90 days
+- To customize the service, create 1 or more trails
+- 2 types:
+  1) Management Events - By default
+  2) Data Events - NOT by default
+- By default, CloudTrail ONLY logs management events
+- CloudTrail is defaulted to a regional service (logs to the region it is in), but can be set to all regions
+  1) Regional - only logs trails for regions it is in
+  2) All regions - Includes Logs events for Global Services (Ex. IAM, STS, CloudFront are classified as global)
+- Stores events in a defined S3 bucket. Only charged for space used (stored efficiently in JSON).
+- Can be integrated into CloudWatch Logs to access metrics and alarms
+- Can create an organizational trail and track all accounts in the organization to manage multiple accounts in an org.
+- NOT REAL TIME! There is a delay.
 
