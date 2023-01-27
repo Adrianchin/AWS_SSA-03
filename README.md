@@ -1029,3 +1029,105 @@ The 2 options between no select and select
   - 8xlarge <- instance size for the generation
     - How much resources are allocated to the generation
 
+>Video 4
+#### S3 Storage
+- Direct (local) attached storage - Storage on EC2 hosts
+- Network attached storage - Volumes delivered over the network (EBS)
+- Ephemeral storage - Temporary storage
+- Persistent storage - Permanent storage - lives on past the lifetime of the instance
+
+#### Key terms
+- Block storage - Volume presented to the OS as a collection of blocks. No structure is provided. 
+  - Mountable and bootable.
+- File storage - Presented as a file share. Has structure. 
+  - Mountable. NOT bootable
+- Object storage - Collection of objects. Flat storage 
+  - Not mountable. Not bootable
+
+#### Storage performance
+- IO (Block size)
+  - The SA area
+  - Size - 15K vs 64K vs 1MEG etc. Each block is n size
+- IOPS
+  - The velocity
+  - How many read/writes the storage can accomplish
+- Throughput
+  - The flux
+  - The rate at which the storage can store data.
+  - This is calculated by IO x IOPS => (Block Size) x (Rate of Read/write)
+
+>Video 5
+#### Elastic Block Store EBS
+- Block storage - Raw disc allocations (volumes) - can be encrypted using KMS
+  - Instances see a block device and creates a file system on this device (ext3/4, xfs)
+- Storage is provisioned in One AZ. Isolated to that AZ. Resilient in that AZ
+- Attach a volume to one EC2 instance at a time (or other service) over a storage network. (can be attached to clusters but it needs to be controlled by the cluster to not overwrite stuff)
+  - Can be deteched and reattached and is not lifecycle linked to one instance. Persistant
+- Snapshot (backups) into S3. Can create a volume from a snapshot (migrate between AZs)
+- Different physical storage types, different sizes, different performance profiles
+- Billed based on GB/month (and sometimes by performance)
+
+>Video 6
+#### EBS Volume Types
+
+#### General Purpose SSD - GP2
+- GP2 is built around bursting IOPs.
+  - You have a burst pool of IOP credits and your stream rate will consume credits
+  - Credits are refilled based on the instance you have
+  - You need to manage credit volumes over all your volumes
+  - Volumes >1TB do not have a credit system and you always achieve baseline
+
+#### General Purpose SSD - GP3
+- You get a standard IOPS and MiB/s as standard
+- If you want to exceed the IOPS, you need to pay for more throughput
+- Basically the same as GP2 but easier to understand
+
+>Video 7
+#### EBS Provisioned IOPS SSD (io1/2)
+- IOPS are configured independently of the volume size
+  - These storage options are consistent low latency with low jitter
+- Per Instance Performance is maxed per type of instance. You can only add up to a maximum IOPS rate 
+
+>Video 8
+#### EBS Hard Disc Drive (HDD) Based
+- General Usage types
+  - st1 - Throughput Optimized
+    - Cheap
+    - IOPS max of 500 (in 1 MB chunks)
+    - Block rate max of 500 MB/s
+    - Big data, data warehouses, log processing
+  - sc1 - Cold HDD
+    - Cheaper (lowest cost)
+    - IOPS max of 250 (in 1 MB chunks)
+    - Block rate max of 250 MB/s
+    - Cold data requiring fewer scans per day
+
+>Video 9
+#### Instance Store Volumes
+- Instance store volumes provide Block Storage Devices
+- Physically connected to one EC2 Host. Local to EC2 Host Only
+  - Lost on instance move, resize or hardware failure
+- Instances on the host can access them
+- Highest storage performance in AWS
+- Included in the instance price
+- #### Need to attach them at launch. CANNOT ATTACH AFTER LAUNCH!
+- The IOPS of Instance Store Volumes are MUCH higher than any other storage class
+
+>Video 10
+#### Choosing between Instance Store and EBS
+- Persistence Required = EBS (Instance Store can have data loss)
+- Resilience = EBS (EBS can be backed up into S3)
+- Storage isolated from instance lifecycle = EBS
+- Resilience w/app in-built replication = It depends
+- High performance needs = It depends
+- Super high performance needs = Instance Store
+- Cost = Instance Store (its often included)
+
+#### Important Notes
+- Cheaper = ST1 or SC1
+- Throughput or Streaming = ST1
+- Boot = NOT ST1 or SC1
+- GP2/3 - can deliver up to 16000 IOPS
+- IO1/2 - can deliver up to 64000 IOPS (can deliver 2560000 with a huge instance)
+- You can take multiple EBS volumes and create a RAID0 set - Up to 260000 IOPS (io1/2-BE/GP2/3)
+- More than 260000 IOPS - Use Instance Store
