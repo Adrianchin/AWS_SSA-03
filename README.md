@@ -807,3 +807,89 @@ The 2 options between no select and select
   - /16 (65536 IPs)
 - Avoid common ranges
 
+>Video 2
+#### Custom VPC
+- Nothing is allowed in or out without explicit configuration
+- Isolated network expanding a region (can use all AZ in a region)
+- Can work with Hybrid Networking - Other cloud and on-premises
+- Default or Dedicated Tenancy <- Dedicated Tenancy is run on dedicated hardware, cannot be undone. All stuff is now placed in your equipment
+- IPv4 private CIDR blocks and public IPs
+- 1 Primary Private IPv4 CIDR Block
+- Minimum /28 (16 IP)
+- Maximum /16 (65536 IP)
+- Optional secondary IPv4 Blocks
+- Optional single assigned IPv6 /56 CIDR Block
+- Fully equipped with DNS in a VPC provided by R53
+- VPC "Base IP +2" address
+- 2 Options:
+  1) enableDnsHostnames - gives instances DNS Names
+  2) enableDnsSupport - enables DNS resolution in VPC
+
+>Video 3
+#### Using Subnets
+- Subnets inside a VPC start entirely private
+- It is an AZ resilient area - a subnetwork of a VPC - within a particular AZ
+- 1 Subnet is in 1 AZ. 1 Subnet CANNOT be in more than 1 AZ. 1 AZ can have multiple subnets.
+- IPv4 CIDR is a subset of the VPC CIDR.
+- The CIDR cannot overlap with other Subnets
+- Optional for a IPv6 CIDR 
+- Subnets can communicate with other subnets in the VPC
+- There are 5 IPs you can never use in a Subnet (ex. 10.16.16.0/20)
+  1) Network Address - The starting network of the network - (10.16.16.0)
+  2) Network+1 - VPC Router - (10.16.16.1)
+  3) Network+2 - Reserved (DNS*) - (10.16.16.2)
+  4) Network+3 - Reserved Future Use - (10.16.16.3)
+  5) Broadcast Address - Last IP in subnet - (10.16.31.255)
+- Dynamic Host Configuration Protocall - DHCP Option Set - How VPC receives IP addresses
+- Can define if Auto Assign Public IPv4 address
+- Can define if Auto Assign IPv6 address
+
+>Video 4
+#### VPC Routing and Internet Gateway
+- Highly available device inside any VPC located in every subnet (VPC Router IP = network+1)
+- Routes traffic between subnets
+- Controlled by route tables. Each subnet has one
+- A VPC has a Main route table - subnet default, or a custom table (customized)
+- A VPC Route table compares the destination address of the data with the route table and matches the highest priority address to the destination. (ex. /16 va /32, /32 is the highest priotity)
+  - The target field will point to an external or internal route
+    - Local = inside the VPC
+    - If the VPC also has an IPv6, it will also have an IPv6 address for local targets
+
+#### Internet Gateway
+- Region resilient gateway attached to a VPC
+- 1 IG per VPC, or 0 IG in a VPC
+- Runs within the AWS Public Zone
+- Gateway traffic between the VPC and the internet or AWS Public Zone (S3, SQS, SNS, etc.)
+- Managed by AWS. From a user perspective: It just works.
+  1) Create an IGW
+  2) Attach IGW to a VPC
+  3) Create a custom Route Table (RT)
+  4) Associate a RT
+  5) Default routes to the IGW
+  6) Subnet allocate IPv4
+- The VPC is now public when the subnet can communicate directly with the internet
+- #### When you create a public IPv4 address in an instance, it actually gets held by the IG and the private IPv4 address gets transformed once it hits the IGW. Therefore, IPv4 is configured in the IGW.
+- Therefore, the IG holds a record of the private IPv4 address. When a packet comes to the IG from a service destined to an external public IPv4 address, it changes the "source" to the IG IPv4 address and holds a record. When it comes back, the destination is to itself, and it changes the destination to the private IPv4 resource from the record.
+
+#### Bastian Host/Jump Boxes
+- The same thing. 
+- Instance in a public subnet
+- Incoming management connections arrive there. You can then access internal VPC resources
+- Often the only way INTO a private only VPC
+
+>Video 5
+#### Stateful and Stateless Firewalls
+- Recall Transmission Control Protocol (TCP) is used to transfer data in packages from port to port (req and response)
+  1) Client picks a temporary source port (ephemeral)
+  2) Client initiates a connection to the server on a well known destination port
+  3) The server responds using source port connected to with the destination on the ephemeral port 
+- When you add firewall routes, you need to look at the reference of where the firewall is to be implemented and apply inbound and outbound rules (wrt directionality)
+- #### For Stateless:
+  - Every communication will require 2 rules - Inbound and Outbound which are the inverse of each other
+  - One port is always ephemeral ports -> This is why we use stateless firewalls, because we do not know what the ephemeral port is (not the well known app port)
+- #### For Stateful
+  - Stateful firewalls are intelligent enough to identify the request and response components of a connection as being related
+  - You will only allow the request (inbound or outbound) and the response is automatically allowed 
+
+>Video 6
+#### Network Access Control Lists (NACL)
