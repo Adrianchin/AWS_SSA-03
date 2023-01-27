@@ -1156,3 +1156,135 @@ The 2 options between no select and select
 
 >Video 12
 #### EBS Encryption
+- KMS can be used to encrypt a EBS volume using a KMS key (supplied by you or created by AWS)
+- An EBS encryption key is created to encrypt data stored on the volume. The EBS key is held on the EC2 host to encrypt all data saved on the volume by the EC2.
+- AWS accounts can be set to encrypt by default - default to KMS Key 
+  - Otherwise choose a KMS key to use
+- Each volume uses 1 unique Data Encryption Key (DEK)
+- Snapshots and future volumes use the same DEK
+- You cannot change a volume to NOT be encrypted
+- The OS itself is NOT aware of any encryption. There is no performance loss. You can use OS encryption, but you have to configure it on the OS itself
+
+> Video 13
+#### Network Interfaces, Instance IPs and DNS
+- Every instance has an Elastic Network Interface (ENI) attached to the instance
+  - You can add more than 1 ENI to an instance (secondary ENI)
+- ENI's have a MAC Address (unique)
+- Primary IPv4 Private IP <- this is what holds the IP address - Does not change for the life of the instance - ex. 10.16.0.10 -> ip-10-16-0-10.ec2.internal <- inside VPC
+  - 0 or more secondary IPs
+  - 0 or 1 Public IPv4 Address <- This will change whenever you turn off the instance
+    - 3.89.7.146 -> ec2-3-89-7-136.compute-1.amazonaws.com (this is provided by AWS, you cannot change)
+  - 1 elastic IP per private IPv4 address
+    - Renoves the Public IPv4 
+    - Replaces with the Elastic IP
+  - 0 or more IPv6 addresses
+  - Security Groups
+    - This means you may have multiple ENI's, in which case you need to configure the SG for each ENI
+  - Source/Destination Check - Traffic is discarded if there is no Source and Destination
+- A secondary IPv4 address with the same as above
+
+#### Exam Power Ups
+- Secondary ENI + MAC = Can be used for Licensing
+- Multi-homed (subnets) Management and Data
+- Different Security Groups - Multiple Interfaces required
+- The instance is different from the ENI (even though it looks like you connect directly to the instance)
+- OS - Does not see the Public IPv4 EVER, only sees the private! 
+- IPv4 public IPs are dynamic. When you stop and start, the public IP changes
+  - If you want it to NOT change, you need to assign an Elastic IP address
+- Inside the VPC, the Public DNS will always resolve to the Private IP. Outside the VPC, the Public DNS will resolve to the Public IP
+
+>Video 14
+#### Amazon Machine Images (AMI)
+- Images of EC2 (templates of instances)
+  - Can be used to launch EC2 instances
+  - AWS or community provided
+  - Marketplace (commercial software)
+  - Regional with unique ID. Each region has their own AMI IDs
+  - Permissions (Public, Your Account, Specific Accounts)
+  - You can create an AMI from an existing EC2 instance to make new EC2 instances
+
+#### AMI Baking
+1) Launch an AMI instance (example attach boot volumes)
+2) Configure the AMI (example configure the volumes)
+3) Create Image (Create snapshot of the AMI instance) - It will create a snapshot that contains 
+   1) the same EBS volume configuration as the original (same device Ids)
+   2) the EBS volume itself
+4) You can launch the new AMI, which will reference the snapshot to create replicas of the boot volumes with the same configurations as your initial AMI
+
+#### Exam Powerup
+- AMI - One region only - Only works in that one region
+- AMI Baking - Creating an AMI from a configured instance + application
+- An AMI cannot be edited. You need to launch the instance, update the configuration and make a new AMI.
+- AMIs can be copied between regions (including its snapshots)
+- Remember permissions, default = your account
+- AMI's contain Snapshots, so you will be charged for snapshots
+
+>Video 15, 16, 17
+#### EC2 Purchase Options (Launch Types)
+
+#### On-Demand
+- On demand instances are isolated, but multiple customer instances run on shared hardware
+- Instances of different sizes run on the same EC2 Hosts, consuming a defined allocation of resources
+- Per-second billing while an instance is running. Associated resources such as storage, consume capacity, so bill, regardless of instance state
+- Default purchase option
+  - No interruptions
+  - No capacity reservations
+  - Predictable pricing
+  - No upfront costs
+  - No discount
+  - Short term workload
+  - Unknown Workload
+  - Apps that CANNOT be interrupted
+
+#### Spot Pricing
+-  AWS selling unused EC2 host capacity for up to a 90% discount. The spot price is based on the spare capacity at a given time, which AWS publishes
+  - Going rate is what you pay. You define your price and if the spot price is below your maximum price, you will run your instance at the spot price
+- Spot is NOT reliable. You can have your instance end at any time depending on the spot price maximum
+  - Non time critical
+  - Anything that can be rerun
+  - Bursty capacity needs
+  - Cost sensitive workloads
+  - Anything that is stateless
+
+#### Reserved Instances
+- A commitment made to AWS for usage of instances for an amount of time
+- Reservations need to match the instance. You will then receive a reduction in price as long as it is within the reservation
+- Unused reservation are still billed
+- Reservations can also provide partial coverage for larger instances
+- Commitments can be from 1 year to 3 year terms. You get more discount for longer
+- You can pay:
+  - No upfront saving - Full per second fee
+  - Partial upfront - Reduced per second fee
+  - Pay all upfront - No per second fee
+
+#### Scheduled Reserved Instances
+- Scheduled reserved is ideal for long term usage which does not run constantly
+- Commitment to specify the frequency, schedule and size
+  - Purchase a scheduled window where you have access to the instance
+  - Minimum time period is to reserve for a minimum of 1 year
+    
+#### Capacity Reservations
+- Reservations are specific. Unlike reserved instances where you just pay to access the instances, capacity reservations are more specific where you reserve capacity within the AZ
+- Zonal reservations only apply to one AZ providing billing discounts and capacity reservations in that AZ
+- On-demand capacity reservations can be booked to ensure you always have access to capacity in an AZ when you need it - but at full on-demand price. 
+  - No term limits, but you pay regardless of if you use it
+
+#### EC2 Saving Plan
+- An hourly commitment for 1 to 3 year terms
+- A reservation of general compute $ amounts and you then get a discount for the hourly rate
+  - Or a specific EC2 Saving plan - flexibility on size and OS of the instance
+- Applies to EC2, Fargate and Lambda
+- Products have an on-demand rate and a saving plan rate
+- Resource usage consumes sabing plan commitment at the reduced saving plan rate
+- If you exceed the saving plan commitment, you pay the on-demand price
+
+#### Dedicated Hosts 
+- A host that is dedicated to you entirely. No shared pool of resources from other users
+- Hosts come with all the resources you expect, so you can fill the resource capacity of the host with any size of instance that can fit on the host
+- Used for things like Licensing requirements that are associated with a physical machine (socket/core licensing)
+
+#### Dedicated Instances
+- Your instances run on an EC2 host with other instances of yours, with NO ONE running on the host
+- AWS commits to not sharing the host with others but manages the host for you (less overhead and admin)
+- You do not own or share the host. Extra charges apply for the instance so you get dedicated hardware (for example, security reasons)
+
