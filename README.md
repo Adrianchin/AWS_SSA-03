@@ -892,4 +892,140 @@ The 2 options between no select and select
   - You will only allow the request (inbound or outbound) and the response is automatically allowed 
 
 >Video 6
-#### Network Access Control Lists (NACL)
+#### Network Access Control Lists (NACL) - Important for VPC Subnet security
+- Similar to a traditional Firewall associated with all Subnets in a VPC
+- Each network NACL only affects data entering or leaving the subnet. 
+- It does not affect anything inside the subnet (connections inside subnet are NOT affected)
+- NACL's are stateless. Only direction matters.
+  - Each connection requires 2 rules: 
+    1) A Request rule
+    2) A Response rule
+  - Note: For ephemeral ports, we will need to use " * " as we have no idea what the ephemeral port will be
+- Inbound rules
+- Outbound rules
+- Rules match DST IP/Range, SDT Port and Protocol 
+- No logical resources
+- Allow or Deny
+- Rules are processed in order, lowest rule number first. 
+- Once a match occurs, processing STOPS
+- " * " is an implicit Deny if nothing else
+- On default (when a VPC is created with a Default NACL) 
+  - Inbound and Outbound rules have an implicit deny ( * ) and an Allow all rule
+  - The result is all traffic is allowed, the NACL has no effect (to be beginner friendly)
+- On Custom VCPs, they are configured with NO subnets and only have 
+  - 1 Inbound rule, an Implicit ( * ) deny
+  - 1 Outbound rule, an Implicit ( * ) deny
+- Cannot be assigned to AWS resources
+- Used together with Security Groups to add explicit Deny
+- Each subnet can only have 1 NACL (Default or custom)
+- NACL can be associated with MANY subnets
+
+>Video 7
+#### Security Groups
+- Security groups are Stateful - Detect response traffic automatically
+- Allow (IN or OUT) requests = allow responses
+- No explicit deny - Only Allow or Implicit deny
+  - Cannot be used to block specific IPs or ranges
+  - This is why NACLs and SG are used together
+- Support IP/CIDR and Logical Resources - Including other SG and itself
+- Attached to Elastic Network Interfaces (ENI's) and not instances
+- #### SG are attached to Network Interfaces!
+
+#### SG Logical References
+- You can reference another SG in the SG, which will allow any instance with the other SG to access the resource. This will allow you to scale an application without worrying about IP ranges or CIDR ranges.
+- This is something you should use for scaling (automatically works for scaling up and down)
+- Referencing any resource with a SG in it
+- Allows self-referencing 
+  - Allows all applications with the SG attached to it to reference other applications with the SG attached. IP Changes are automatically handeled
+
+>Video 8 and 9
+#### Network Address Translation (NAT) and NAT Gateway
+- A set of processes that can remap source (SRC) or destination (DST) IPs
+- IP Masquerading - Hiding a CIDR block behind 1 IP
+  - Works well because IPv4 are running out
+- Gives private CIDR range outgoing internet access
+- You cannot access IP addresses behind a NAT, only they can access external addresses and accept responses
+- NAT Gateway is provisioned into a public web subnet (so it can access the Internet Gateway)
+- Uses a route table to point all instances (0.0.0.0/0) at the NAT Gateway, which will then point out to the IG
+- Uses Elastic IPs (static IPv4 Public)
+- AZ Resilient Service (HA in the AZ)
+- For regional resilience, NATGW need to be in each AZ
+  - #### Then you need Route Tables in each AZ to point at that AZ's NATGW as the target
+  - Managed by AWS, scales up to 45 Gbps, $ Duration and Data Volume
+
+1) NAT Gateway stores where the package is from and data (in a translation table). 
+2) It then changes the source IP from the private IP into the NAT Gateway's private IP address. 
+3) This package is then sent to the IG and the NAT Gateway's source private IP address is changed to the IG Public IP Address is sent to the destination
+4) When the package is returned, the new destination is for the IG's Public Address
+5) The IG translates the destination from it's destination Public IP address to the NAT Gateway's private IP Address
+6) The NAT Gateway then translates the package's destination IP address to the original private IP address using the translation table
+
+#### NAT Instance
+- NAT Instances are just NAT Gateways that are run on EC2 instances
+- If you implement a NAT Instance, you need to disable Source and Destination Checks to use an EC2 as a NAT instance
+- In general, use a NAT Gateway as its easier
+
+#### General Notes
+- NATGW you can only use NACLs, NAT Instances you can use both NACLs and Security Groups (as they are instances)
+- NAT does NOT work with IPv6
+- If you add ::/0 for an IPv6 and point it at the IGW, iw will be good for Bi-directional connectivity 
+- If you want to give outgoing only internet access, you need to use an Egress Internet Gateway
+
+### EC2
+
+>Video 1
+#### EC2 Architecture
+- EC2 Instances are virtual machines (OS + Resources)
+- EC2 Instances are run on EC2 Hosts
+- Shared Hosts or Dedicated Hosts (your own dedicated host, you do not share the physical hardware)
+- Host = 1 AZ -> AZ Fails, host fails
+- EC2 Has
+  - Instance Store (Temporary storage on host)
+  - Storage EBS (Storage accessible on the AZ) - Volumes that can be shared among instances in AZ
+  - If a host falls over, a new host is provisioned in the same AZ
+  - You CANNOT connect AZ specific things like EBS to another EBS or instance in another AZ
+- EC2 is good for long-running compute
+- Traditional OS and Application
+- Server style application
+- Burst or steady-state load
+- Monolithic application stacks
+- Migrated application workloads or disaster recovery
+
+>Video 2 and 3
+#### EC2 Instance Types
+- Raw CPU, Memory, Local Storage Capacity and Type
+- Resource Ratios ($/what you get)
+- Storage and DAta Network Bandwidth
+- System Architecture / Vendor
+- Additional Features and Capabilities (ex. GPUs)
+
+#### EC2 Main Categories
+1) General Purpose - Default - Diverse workloads, equal resource ratio
+   - A1, M6g - ARM based processors. Efficient
+   - T3, T3a - Burst Pool - Cheaper assuming nominal low levels of usage with occasional peaks
+   - M5, M5a, M5n - Steady state workload alternative to T3a/3a - Intel/AMD
+2) Compute Optimized - Media processing, HPC, Scientific Modelling, Gaming, Machine Learning
+   - C5, C5n - Media encoding, scientific modeling, gaming servers, machine learning
+3) Memory Optimized - Processing large in-memory datasets, database workloads
+   - R5, R5a - Real time analysis, in memory caches
+   - X1, X1e - Large sale in-memory applications
+   - High Memory (u-Xtb1) - Highest memory of all AWS instances
+   - z1d - Large memory and CPU
+4) Accelerated Computing - Hardware GPU, field programmable gate arrays (FPGAs)
+    - P3 - GPU instances (Tesla v100) - Parallel processing and AI
+    - G4 - GPU instances (NVIDIA T4 Tensor) - Machine learning
+    - F1 - Field Programmable Gate Arrays - Genomics, Big data
+    - Inf1 - Machine learning
+5) Storage Optimized - Sequential and random IO - Scale-out transactional databases, data warehousing, Elasticsearch, analytic workloads
+    - I3/I3en - Local high perfoamnce SSD (NVMe) - NoSQL databases, warehouses
+    - D2 - Dense Storage (HDD) - Data Warehouses, HADOOP, Data processing - Lowest price disk throughput
+    - H1 - High Throughput, balance CPU/Mem, Big data
+
+#### EC2 Naming Scheme
+- R5dn.8xlarge <- instance type
+  - R <- Instance Family
+  - 5 <- Instance Generation
+  - dn <- Additional capabilities 
+  - 8xlarge <- instance size for the generation
+    - How much resources are allocated to the generation
+
