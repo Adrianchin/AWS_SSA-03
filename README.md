@@ -1089,7 +1089,7 @@ The 2 options between no select and select
 - Per Instance Performance is maxed per type of instance. You can only add up to a maximum IOPS rate 
 
 >Video 8
-#### EBS Hard Disc Drive (HDD) Based
+#### EBS Hard Disc Drive (HDD) Based - ST1 and SC1
 - General Usage types
   - st1 - Throughput Optimized
     - Cheap
@@ -1126,8 +1126,33 @@ The 2 options between no select and select
 #### Important Notes
 - Cheaper = ST1 or SC1
 - Throughput or Streaming = ST1
-- Boot = NOT ST1 or SC1
+- Boot = NOT ST1 or SC1 <- Mechanical storage type
 - GP2/3 - can deliver up to 16000 IOPS
 - IO1/2 - can deliver up to 64000 IOPS (can deliver 2560000 with a huge instance)
 - You can take multiple EBS volumes and create a RAID0 set - Up to 260000 IOPS (io1/2-BE/GP2/3)
 - More than 260000 IOPS - Use Instance Store
+
+>Video 11
+#### EBS Snapshots
+- Backups of volume copies stored in S3
+- Snapshots are incremental in nature - the first snapshot has a full copy of all data on the volume
+  - Subsequent snapshots of the same volume only stores the difference between the initial snapshot and the current snapshot
+  - There is no risk of losing data if you delete an incremental snapshot. Each snapshot can be thought of as self sufficient
+  - Volumes can be created (restored) buy snapshots
+  - Snapshots can be copied between regions
+
+#### EBS Snapshot/Volume Performance
+- New EBS Volume = full performance immediately
+- Snapshots restore lazily - fetched gradually
+  - If you requested blocks that are not yet restored, they are fetched immediately
+  - You can also force a read of all data immediately
+- Fast Snapshot Restore (FSR) - Immediate restore a snapshot. Allows you to restore faster (costs more)
+  - Can have up to 50 FSR snaps per region. Set on the Snapshot and AZ
+
+#### Billing
+- You are billed on used data. You only get charged what you use for your snapshot.
+  - A snapshot will not cost more if you do more snapshots, as it consumes only the changed amount of data (you only pay what you add)
+  - You are only charged for changed data
+
+>Video 12
+#### EBS Encryption
