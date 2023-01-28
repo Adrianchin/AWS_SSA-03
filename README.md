@@ -1369,3 +1369,38 @@ The 2 options between no select and select
 - EventBridge - Events
 - Replication - Cross region and cross account
 
+>Video 5
+#### Kubernetes (K8s)
+- Cloud agnostic product
+- Cluster - A deployment of Kubernetes, management, orchestration...
+- Node - Resources: Pods are placed on nodes to run
+- Pod - 1+ containers: smallest unit in K8s; often 1 container 1 pod
+- Service - Abstraction - service running on 1 or more pods
+- Job - ad-hoc, creates 1 or more pods until completion
+- Ingress - Exposes a way into a service (ingress -> routing -> service -> 1+ pods)
+- Ingress controller - used to provide ingress (eg. AWS Load Balancer uses Application Load Balancer or a Network Load Balancer)
+- Persistent Storage (PV) - Volume whose lifecycle lives beyond any 1 pod using it
+
+>Video 6
+#### Elastic Kubernetes Service (EKS)
+- AWS managed K8s - A specially optimized AWS implementation of K8s
+  - Run in different ways: 
+    - AWS <- normal (running EKS in AWS)
+    - Outpost
+    - EKS Anywhere
+    - EKS Distro
+- Control plane scales and runs on multiple AZs
+- Integrates with AWS services (ECR, ELB, IAM, VPC)
+- EKS Cluster = EKS Control Plane and EKS notes
+- etcd (the key value store that K8s uses) is managed by AWS and is distributed across multiple AZs
+- Nodes options
+  - Self Manages
+  - Managed node groups 
+  - Fargate pods
+- Windows, GPU, Inferentia, Bottlerocket, Outpost, Local zones.... check node type
+- Storage providers include EBS, EFS, FSx Lusture, FSx for NetApp ONTAP
+- How it works
+  - EKS control plane is managed in an AWS managed VPC.
+  - Control plane ENI injected into customer VPC
+  - The worker nodes (EC2) are controlled by the control plane
+  - Secondary EKS Admin public endpoint available that connects the worker nodes back to the Control Plane and can also connect to the service consumer
