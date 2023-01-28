@@ -1996,3 +1996,191 @@ The 2 options between no select and select
 - DB on EC2 is self managed, but has overhead
   - Currently only works for MS SQL and Oracle
   - Can connect using SSH, RDP or Session Manager
+
+>Video 11
+#### Amazon Aurora Architecture
+#### Amazon Aurora Provisioned (non-serverless)
+- Very different from RDS
+  - Uses a "Cluster"
+- A single primary instance but +0 or more replicas
+- No local storage - Uses Cluster Volume (all cluster shares storage)
+  - You can have up to 15 replicas 
+  - All SSD Based across 3 AZ
+    - High availability
+    - Auto detects issues and will fix corruption in a disc by using other nodes to recover the corrupted node
+  - Storage is billed based on what you use
+    - High water mark (highest amount used) (may be phased out)
+      - Storage which is freed up can be re-used (may be phased out)
+- Aurora endpoints have multiple endpoints that you can connect to
+  - Cluster endpoint - Points to the primary endpoint for write and read
+  - Reader endpoint - Points to the replicas for reading
+    - Each instance actually has its own endpoint as well, so you can customize your connections
+- No free-tier option
+- Aurora does not support micro instances
+- Compute - hourly charge, per second, 10 min mimumum
+- Storage - GB/month consumed, IO cost per request
+- 100% DB Size in backups are included
+- Backups in Aurora work in same way as RDS
+  - Restores create a New Cluster
+  - Backtrack can be used which allow in-place rewinds to a previous point in time (ex. if you know the exact moment corruption occurred, you can back up to the exact time before it occurred)
+    - Requires being enabled
+  - Fast clones make a new database much faster than copying all the data - Copy-on-write
+
+>Video 12
+#### Amazon Aurora - Serverless (What Fargate is to ECS)
+- Runs Aurora hosted by AWS
+- Scalable - ACU - Aurora Capacity Units
+- Aurora Serverless cluster has a Min and Max ACU
+- Cluster adjusts based on load
+- Can go from 0 to paused
+- Consumption billing on a per second basis
+- Same resilience as Aurora (6 copies across AZs)
+- The storage is provisioned the same as a provisioned Aurora Cluster, but
+  - ACU units (the Aurora instances) are shared in an AWS managed Pool of Aurora instances using ACU's to pay for the service
+  - Application connects to a Proxy Fleet to allow Aurora to be scaled in and out (to paused)
+    - The proxy fleet is connected to the instances in the proxy fleet, and the customer/application connects to the proxy fleet that handles all the provisioning 
+- When to use?
+  - Infrequently used application (you pay in a per second basis)
+  - New applications
+  - Variable workloads (scales in and out)
+  - Unpredictable workloads (you can set a min/max for ACUs to scale) 
+  - Development and test databases (you only pay for what you use and only pay for storage)
+  - Multi-tenant application - If your incoming load is tied to your incoming revue, you can control your costs easily
+
+>Video 13
+#### Amazon Aurora Global Database 
+- Allows you to operate a database across regions (a primary region and a secondary region)
+  - Replication from the primary region to the secondary region is around 1s
+- Primary Region - Contains the primary instance
+- Secondary Region - Contains read only instances
+- Can have cross-region fail-over
+- Global read scaling - low latency performance improvements 
+- Super fast replication at storage layer between regions (this is a 1 way replication)
+- No impact on DB performance - the instances are not used to replicate
+- Secondary regions can have 16 replicas
+  - All can be promoted to R/W
+- Currently max 5 secondary regions
+
+>Video 14
+#### Aurora Multi-Master
+- Default Aurora is a single-master setting
+  - One R/W and 0+ Read only replicas
+- Cluster endpoint is used to write, read endpoint is used for load balanced reads
+- Failover takes time, replica promoted to R/W
+- In Multi-master mode, All instances are R/W
+- The application can connect to one or all the instances in the cluster
+- The instance then can connect to any storage cluster 
+  - This uses the state machine idea
+    - Requires a democracy for multi read/write multi master (as you have more than 1 master)
+- The replication is then passed over to all instances of Aurora across all instances to be saved in the in-memory cache
+- This also allows for instant fall-over (basically or almost fault tolerant)
+  - Any master can connect to any storage node at any time - you can send your write to another writer
+
+>Video 15
+#### RDS Proxy
+- RDS proxy is a group of instance that runs between the clients (accessing the DB) and keeps a long-term connection pool to the primary DB instance
+- When an application tries to access data, it connects to the proxy and the proxy handles connections
+  - This uses multiplexing
+- Proxys maintain an open connection and wait, even if the target DB is unresponsive
+- RDS Proxy => DB instance connections can be reused, avoiding lag associated with establishing a connection, using the connection and terminationg the connection after each invocation
+  - Abstracts the client away from a DB failure or fallover event
+  
+#### Why use RDS Proxy?
+- Opening and closing connections consumes resources
+  - it takes time to open and close as well, latency is an issue
+- With serverless, how do you handle lambdas that open and close?
+- Handling failures of database instances is hard
+  - doing this within your application asks risk
+- DB Proxies help, but managing them is nor trivial (scaling and resilience)
+- Application -> Proxy (connection pooling) -> Database
+
+#### When do you use a proxy?
+- Too many connections to handle on your DB instances
+- DB instances using T2/T3 (ie. small burst type) instances
+- AWS Lambda (time saved/connection reused and IAM auth is reused)
+- Long running connections (SAAS apps) - Low latency
+- Where resilience to database failure is a priority
+  - RDS Proxy can reduce the time for failover
+  - RDS Proxy can make it transparent to the application
+
+#### Key Facts for the Exam
+1) Fully managed DB Proxy for RDS/Aurora
+2) Auto scaling and high available by default
+3) Provides connection pooling - reduces DB loads
+4) Only accessible from a VPC
+5) Accessed via Proxy Endpoint - No app changes
+6) Can enforce SSL/TLS
+7) Can reduce failover time by over %60
+8) Abstracts failover away from your application - it just awaits for a connection to be completed and then continues on
+
+>Video 16
+#### Database Migration Service (DMS)
+- A managed database migration service
+- No downtime required -> Default to DMS
+- Need to have a DB supported by AWS
+- Runs using a replication instance
+  - You need to define a source and destination endpoints to point at
+  - You need a source and target database
+- One endpoint NEEDS to be AWS
+- You define a replication task that is related to what needs to be done
+- Jobs can be of 3 types
+  1) Full load (one off migration of all data)
+  2) Full Load + CDC (Change Data Capture) for ongoing replication which captures changes
+     - Used and once you are up to date, you can transition off the old on onto the new
+  3) CDC Only (Change Data Capture) - If you want to use an alternative tool to mirate your data, and then you want to keep an ongoing replication to keep the new database up to date
+     - Say you bulk transport using something like snowball
+- Schema Conversion Tool (SCT) can assist with Schema Conversion
+  - Allows you to migrate from 1 database engine to another
+
+#### Schema Conversion Tool
+- SCT is used when converting one database engine to another
+  - Including DB -> S3 (migrations useing DMS)
+- SCT is NOT used when migrating between DB's of the same type
+  - ex. On premise MySQL to RDS MySQL, it would NOT be used
+- Works with OLTP DB Types (MySQL, MSSQL, Oracle)
+- Works with OLAP Types (Teradata, Oracle, Vertica, Greenplum...)
+- ex. On-premises MSSQL -> RDS MySQL or Aurora
+
+#### DMS and Snowball
+- Larget migrations might be multi TB in size
+  - Moving data over networks takes up too much time and capacity
+- DMS can utilize AWS SnowBall
+1) Use SCT to extract data locally and move to a snowball device
+2) Ship the device back to AWS. It is then loaded to an S3 bucket
+3) DMS Migrate from S3 into the target store
+4) Change Data Capture (CDC) can capture changes made between the transfer and via S3 intermediary, they are also written to the target DB
+
+### Network Storage and Data Lifecycle
+>Video 1
+#### Elastic File System (EFS) Architecture
+- EFS is an implementation of NFSv4 -> File system that can be mounted
+  - EBS is block storage, while EFS is file storage
+  - Linux Only
+- EFS Filesystems can be mounted in Linux
+- EFS Filesystems can be shared between many EC2 instances
+- Mounted inside a VPC via Mount Targets
+- Can be accessed from on-premises - using VPN or DX (Direct Connect)
+  - ie. You can run EFS storage in AWS and use a direct connect to allow your local on-prem instance to use it for storage
+- You need to have a Mount Target for the EFS file system in each subnet that the EC2 will be able to connect to as well
+- Modes
+  - General purpose - Default for almost all uses
+  - Max I/O modes
+- Bursting and Provisioned throughput modes
+- 2 Classes - Mirror AWS S3 class types for these 2
+  1) Standard - Default
+  2) Infrequent Access (IA)
+  - Lifecycle policies can be used with these classes
+
+>Video 2
+#### AWS Backup
+- A fully managed data-protection service (backup/restore)
+- #### Allows you to consolidate management of all backups in 1 place
+  - Across accounts and across regions
+- Supports a wide range of AWS products
+  - Most compute, EBS, EFS, Databases and S3
+- Backup Plans - Frequency, Window, Lifecycle, Vault, Region Copy
+  - Resources - What resources to back up
+  - Vaults - Backup destination (containers) - assign KMS keys for encryption
+    - Vault lock - a Write-once, Read-Many (WORM), 72 hour cool off, then even AWS cannot delete
+  - On-Demand - Manual backups created as needed
+  - Point in time recovery - PITR
