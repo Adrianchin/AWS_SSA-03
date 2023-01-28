@@ -1404,3 +1404,178 @@ The 2 options between no select and select
   - Control plane ENI injected into customer VPC
   - The worker nodes (EC2) are controlled by the control plane
   - Secondary EKS Admin public endpoint available that connects the worker nodes back to the Control Plane and can also connect to the service consumer
+
+### Advanced EC2
+> Video 1
+#### Bootstrapping EC2 using User Data
+- A process which allows a system to self configure. Allows EC2 Build Automation 
+- This is enabled using User Data - Accessed via the meta-data IP
+  - http://169.254.169.254/latest/user-data
+- Anything on User Data is executed by the instance OS
+- Only done once at Launch
+- EC2 does NOT interpret the data. The OS needs to understand the User Data
+
+#### How it works
+1) An AMI is used to set up an instance
+2) EC2 injects User Data into the instance
+3) The instance executes the user data
+   1) The service is ready to run (Running)
+   2) The service fails to run, bad configuration (Failure)
+
+#### User Data Key Points
+- Its opaque to EC2 - It is just a block of data
+- It's not secure. Do not use it for passwords or secrets or long term credentials
+- User data is limited to 16kb in size
+- User data can be modified when an instance stops
+- Only executed once at launch
+
+#### Boot-time-to-service-time
+- Minutes from AMI -> Launch time (without Bootstrapping)
+- Post Launch Time (Bootstrapping) can automate configuration, make it quicker
+- AMI Baking - Pre-configure the instance, create an AMI, then launch the new AMI
+  - You can Bake and then do small amounts of bootstrapping at the end to lower the time-to-boot
+
+>Video 2
+#### AWS::CloudFormation::Init
+- cfn-init - helper script that is installed on EC2 OS
+  - Simple configuration management system
+  - Procedural (User Data) vs desired state (cfn-init)
+- Can make sure packages, groups, users, sources, files, commands and services are installed/configured on boot of the OS
+- Passed into the instance in User Data
+- Provided with directives via Metadata and AWS::CloudFormation::Init on a CFN resource
+- Can also piggyback off of a CreationPolicy (Located in the template) and Signals (located in the UserData) to signal an instance is complete ONLY when the bootstrapping has been completed successfully
+
+#### How it works
+1) A template contains the Metadata with AWS::CloudFormation::Init configured
+2) The template also contains User Data
+3) The stack is created that includes an instance
+4) The instance is configured with the User Data
+5) The stack then coordinates with CloudFormation to automate various configurations
+6) If a CreationPolicy and Signal has been configured, this will be reported to the stack after bootstrapping and then it is reported to the Stack, which will report to CloudFormation as completed (and then CloudFormation can take further steps)
+
+>Video 3
+#### EC2 Instance Roles
+- IAM Role has a permission policy attached to it
+- IAM Role allows an EC2 Service to assume it
+- This requires an InstanceProfile, which is what is actually attached to the instance via the meta-data
+- in meta-data
+  - iam/security-credentials/role-name
+- Automatically rotated - always valid
+- Should always use ROLES rather than adding access keys into instances
+- CLI tools will use ROLE credentials automatically
+
+>Video 4
+#### AWS System Manager Parameter Store
+- Storage for configurations and secrets
+- Stores 3 types of params
+  1) Strings
+  2) StringLists
+  3) SecureStrings
+- License codes, Database strings, Full configs and Passwords
+- Hierarchies and versioning
+- Plaintext and Ciphertext
+- Public Parameters - Latest AMIs per region
+- A Public service - anything accessing it needs to have public access
+- Connected to IAM - Services can access it 
+- SSM Parameter Store can access KMS (you can secure parameters with KMS)
+- You can initiate changes in parameter store to create events
+- Can work in a tree format 
+  - /wordpress/DBUser can store DBUsers in the /wordpress/ tree
+
+>Video 5
+#### System and Application Logging on EC2
+- Cloudwatch is for metrics
+- Cloudwatch Logs is for logging
+- Neither of these 2 can natively capture data inside an instance
+- Cloudwatch agent is required to capture OS visible data
+  - Also requires permissions and configurations
+- You can set up CloudWatch Agent in the Parameter Store and just set it to your instances, which automates configuration and logging at scale
+
+#### How it works
+1) CloudWatch Agent needs to be attached to an instance
+2) An Agent Config needs to be configured to set what metrics and logs we want to measure
+    - Metrics and logs are configured for every log file that we want to stream into CloudWatch Logs
+      - ex. /var/log/httpd/error_log
+      - ex. /var/log/secure
+3) We need to configure a role to allow us to connect to CloudWatch Logs
+
+>Video 6
+#### EC2 Placement Groups
+- Placement groups allow you to configure where your EC2 instances are placed
+- There are 3 ways to place them
+  1) Cluster placements - Pack instances close together
+  2) Spread - Keep instances separated
+  3) Partition - Group of instances spread apart
+
+#### Cluster Placement Groups
+- Used for the absolute highest level performance
+- Typically you need to launch all identical instances all at the same time
+- The idea is that all instances in a placement group are placed within the same rack and ideally in the same EC2 instance group
+- All members have direct connections to each other and have the lowest latency possible with the max packages per second possible in AWS
+- Due to placement, they offer little to no resilience (if EC2 fails, all fail)
+- Cannot span AZs - ONLY 1 AZ (locked when launching first instance)
+- Can span VPC Peers, but impacts performance
+- Requires a supported instance type
+- Use the same type of instance (not mandatory)
+- Launch at the same time (not mandatory... but highly recommended)
+- 10Gbps single stream performance
+- Use Cases: Performance, Fast Speed, Low Latency
+
+#### Spread Placement Groups
+- Spread Placement Groups are seperated into different racks to isolate failure for each instance
+- Max 7 instances per AZ - Isolated infrastructure limit
+- Provides infrastructure isolation
+  - Each instance runs from a different rack
+- Each rack has its own network and power source
+- Not supported for dedicated instances or hosts
+- Use Case: Small number of critical instances that need to be kept separated from each other - Max resilience of your application
+
+#### Partition Placement Groups
+- Can be created across multiple AZ in a region
+- Divided into partitions, with a max of 7 partitions per AZ
+- Each partition has its own racks - no sharing between partitions
+  - You get to control which partition you will launch into
+- Meant for large scale processing with high resilience - Allows you to also place compute in specific areas that are topology aware (replication)
+- Instances can be placed in specific locations or auto placed
+- For topology aware applications
+  - HDFS, HBase and Cassandra
+- Contain the impact of failure to part of the application 
+
+>Video 7
+#### Dedicated Hosts
+- EC2 Host that is dedicated to you entirely
+- Specific family (ex. a1, c5, m5)
+- No instance charges since you pay for the entire host
+- On demand and reserved options available
+- Host hardware has physical sockets and cores you have access to
+  - various instances will take different amounts of cores
+- Hosts are typically designed to operate specific sized instances in specific configurations. Only some allow you to mix and match
+
+#### Limits and features
+- AMI Limits - RHEL, SUSE Linex and Window AMIs are NOT support
+- Amazon RDS instances not supported
+- Placement groups are not supported for dedicated hosts
+- Hosts can be shared with other ORG accounts. 
+  - With RAM (Resource Access Manager) you can share the resources
+    - There are ways you can use security separation where you can see all instances run in your host, but you cannot access them, and organizations can only see their instances but not other instances
+
+>Video 8
+#### Enhanced Networking and EBS optimized
+#### Enhanced Networking
+- Required for any advanced cluster groups
+- Uses SR-IOV - NIC is virtualization aware
+  - Without SR-IOV, all instances share 1 network card, which causes networking issues
+  - With enhanced networking, there are multiple logical network cards per physical card that the instances individually connect to, which frees up the host resource requirements 
+- Increases bandwidth
+- Much higher I/O and lower Host CPU usage
+- Higher package-per-second (PPS)
+- No charge - available on most EC2 types
+- Consistent lower latency
+
+#### EBS Optimized instances
+- EBS is block storage over the network
+- Historically network was shared, both data and EBS
+- EBS Optimized means there is dedicated capacity for EBS
+- Most instances support and enabled by default
+  - For some instances, it is supported but costs extra
+- Adding dedicated capacity for storage networking to an EC2 instances
