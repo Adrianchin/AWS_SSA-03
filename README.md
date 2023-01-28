@@ -1288,3 +1288,84 @@ The 2 options between no select and select
 - AWS commits to not sharing the host with others but manages the host for you (less overhead and admin)
 - You do not own or share the host. Extra charges apply for the instance so you get dedicated hardware (for example, security reasons)
 
+>Video 18
+#### Instance Status Checks
+- All instances have 2 high level status checks for setting up an EC2 Instance. These can be configured to take actions if they are triggered (example restart, start a new EC2 instance, SNS etc.)
+
+>Video 19
+#### Scaling
+- #### Horizontal Scaling
+  - Increasing capacity by increasing the number of instances and having them work together on a workload
+    - Spinning up more instances to deal with a workload
+    - Stateless
+    - No disruption while you scale
+- #### Vertical Scaling
+  - Increase capacity by increasing the instance side
+    - Upgrade the instance type
+
+### Containers and ECS
+>Video 1
+#### Containers
+- Dockerfiles are used to build images
+- Use the parent OS for hosting.
+
+>Video 2
+#### Elastic Container Service (ECS)
+- ECS orchestrates your containers for you in a cluster
+- Runs in 2 modes
+  1) Fargate mode - AWS manages the clusters and you run your containers on the AWS manages clusters (less overhead)
+  2) EC2 Mode - You have an EC2 that has ECS running on the EC2 instance and EC2 manages the container in your instance
+  - You use a container definition to provide information for the container you want to run. A pointer to where the container is stored and what port is exposed.
+  - Task Definition - Represents the task as a whole. 
+    - Resources used by the task
+    - Networking
+    - Compatability (EC2 or Fargate)
+    - The task Role - The permission role that the container will have to access EC2 resources
+      - IAM role that the task will have access to
+    - Can include 1 or more containers
+- A Service Definition - Determines how you want to scale the task
+  - How many Copies, High Availability, Restarts, Monitoring. How to deal with incomming load.
+
+>Video 3
+#### ECS Cluster Types
+#### EC2 Mode
+- An EC2 Cluster runs in the VPC, so you can have multiple AZ's and this allows you to have High Availability
+- An Auto Scaling Group will control the number of tasks that will run in each AZ
+- Uses a container registry, tasks and AMI images to spin up containerized services inside the EC2 hosts 
+- At a cluster level, you need to manage the capacity of the container hosts (you have to manage the containers inside the EC2 instances). 
+- More admin.
+
+#### Fargate Mode
+- You do not have to manage EC2 instances for use as container hosts.
+- Same as EC2 mode but AWS maintains a shared Fargate shared infrastructure platform
+  - You can run containers on shared hardware and use it as a service
+- Still use VPCs as if this was an EC2 mode
+- The fargate resources are injected into your VPC (given network interfaces in your VPC) which you can access
+- You only pay for the containers you are consuming
+
+#### When to use what
+- If you use containers - use ECS (EC2 mode or FG mode)
+- When you have a large workload and are price conscious - EC2 Mode (only if you can manage the admin costs)
+- When you have large workloads and are overhead conscious - Fargate mode
+- Small/Burst workloads - Fargate
+- Batch/Periodic workloads - Fargate
+
+>Video 4
+#### Elastic Container Registry (ECR)
+- Managed container image registry
+  - Think Docker Hub, but in AWS
+- Each AWS account has a public and private registry
+- Each registry can have many repositories
+- Each repository can contain many images
+- Images can have several tags
+- Public = Public Read/Only access, but Read/Write requires permissions
+- Private = Permissions required for any Read/Only or Read/Write access
+
+#### Important points
+- Integrated with IAM - Permissions
+- (Inspector) - Image scanning, basic and enhances 
+- Cloud Watch - near real-time metrics (auth, push, pull)
+- Cloud Trail - API Actions
+- EventBridge - Events
+- Replication - Cross region and cross account
+
