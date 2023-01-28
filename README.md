@@ -1700,3 +1700,299 @@ The 2 options between no select and select
   - "+" or "-" bias can be added to rules. A "+" increases a region size and decreases the neighbouring regions.
   - Routing is distance based (including bias)
 
+>Video 12
+#### R53 Interoperability (AKA when you are using R53 for Registrar only or Hosting only)
+- R53 normally has 2 jobs 
+  1) Domain Registrar
+  2) Domain Hosting
+- R53 can do Both, or either Domain Registrar or Domain hosting
+1) R53 accepts your money (domain registration fee)
+2) R53 allocates 4 Name Servers (NS) (domain hosting)
+3) R53 creates a zone file (domain hosting) on the above NS
+4) R53 communicates with the registry of the TLD (Domain Registrar) <- top level domain
+  - Sets the NS records for the domain to point at the 4 NS above
+
+#### If you pay for registrar only (you pay for R53 to deal with the TLD, ie. point to your name server to get the zone files)
+- Pay R53 to manage the TLD (top level domain) to point to the zone files
+- Provide R53 with your name server to get your zone files (from another provider)
+
+#### Hosting Only (you pay for the R53 name server to host your zone files)
+- Domain is registered via a 3rd party provider (Another party deals with the TLD for pointing at the name servers to get the zone files)
+- Use R53 to host your zone files in the R53 name servers
+- You have to get the 3rd party provider information of the name servers (more admin)
+
+>Video 13
+#### Implementing DNSSEC with R53 - Adds the certificate record to the DNS TLD (you can check and confirm certifications when you walk the tree)
+- KMS Creates a public and private key signing key.
+  - -These are kept in US-EAST-1 
+  - R53 uses the KMS keys for signing records
+- R53 creates a Zone Signing Key (private) and uses this with the KMS Key Signing Key to create a Key Signing Key and Zone Signing Key (DNS Key) to verify records in the zone
+- The DNSKey and KMS Private Keys create the RRSIG DNSKey (register record signing key)
+  - Uses the Public KMS Key Signing Key along with the Key Signing Key in R53 to sign and certify the top level domain server register records
+- You can create alarms for the DNSSECInternalFailure and DNSSECKeySigningKeyNeedingActions in CloudWatch to notify if there is an issue with DNSSEC
+- DNSSEC Validation can be enabled for VPCs - invalid results on DNSSEC enabled zones won't be returned
+
+### Relatinal Database Service (RDS)
+>Video 1 and 2
+#### Database Refresher and Models
+- Relational (SQL)
+  - Structured Query Language (SQL)
+  - Structure in and between tables of data - Rigid Schema
+- Non-Relational (NoSQL)
+  - Not a single thing, different models
+  - Generally, a much more relaxed schema
+  - Relationships between tables are handled differently
+
+#### Relational Databases
+- Primary Key - A unique key schema that is set when a table is created. 
+- Composite Key - A join between 2 tables that creates a link/relation between 2 sets of keys to make a composite key set
+  - Table relationships use keys
+
+#### Key-Value DB (Key-Value stores) - ex. Redis
+- A key:value pair database
+  - No real schema
+  - No real structure
+  - No joining or comparing 
+- Super scalable
+- Really fast
+
+#### Wide Column Store - DynamoDB
+- Partition Key (required)
+- Other Key (sort or range key) (required)
+- Every row can have attributes (no fixed requirement)
+  - Every item in the store needs to have 1 or more keys (have a ridged key structure)
+- Like a Relational DB for keys but with a non-standard attributes (value) storage for data
+
+#### Document Databases
+- Use unique ID's attached to documents
+- Interacting with whole documents or deep attribute interactions
+
+#### Column Databases (opposite of Row stores - SQL)
+- Row based DB are ideal when you operate with rows
+  - ex. adding updating, deleting <- transactional workloads
+- Column DB are stored on columns
+  - Every column is stored together <- data analysis or reporting workloads
+- Very fast to grab same "type" of data, as they are all stored together
+
+#### Graph Databases
+- Nodes are connected to each other
+  - Each node has a name-value pair associated with them
+- Nodes have a connection to other nodes
+- Relationships between nodes are stored in the DB along with the data themselves, so complicated structures can be efficiently queried based on relationships
+
+>Video 3
+#### ACID and BASE Databases
+- ACID and BASE are DB transaction models
+- CAP Theorem (Chose 2)
+  - Consistency
+  - Availability
+  - Partition Tolerant (resilience)
+
+- ACID - Consistency
+  - Atomic
+  - Consistent
+  - Isolated
+  - Durable
+- BASE - Availability
+  - Basically Available
+  - Soft State
+  - Eventually Consistent
+
+#### ACID - Consistent
+- Atomic
+  - All or No components of a transaction succeed or fails
+- Consistent
+  - Transactions move the database from 1 valid state to another - nothing in-between is allowed
+- Isolated
+  - If multiple transactions occur at once, they do not interfere with each other. Each executes as if it's the only one
+- Durable
+  - Once committed, transactions are durable. Stored on non-volatile memory, resilient to power outage or crashes
+- In general: SQL style DB
+  - RDS
+  - Note: DynamoDB Transactions is an ACID NoSQL style DB
+
+#### BASE - Highly scalable
+- Basically Available
+  - Read and Write operations are available "as much as possible" but without any consistency guarantees - kina/maybe
+- Soft State
+  - The database does NOT enforce consistency. This is offloaded onto the application/user
+- Eventually Consistent
+  - If we wait long enough, reads from the system will be consistent
+- In general: NoSQL style DB
+
+>Video 4
+#### Databases on EC2
+- Generally, not a good idea when there are stand-alone DB products provided by AWS
+- 2 normal situations
+  1) DB is included as part of the application and webserver (monolith)
+  2) DB is split from the other application instances (Seperated in another EC2)
+     - You need to be aware of the transfer of data between different instances in another AZ
+- Reasons for running a DB on EC2
+  - Access to the DB instance OS
+  - Advanced DB Options, tuning
+    - Note: Many AWS DB services now provide tuning on the DBSaaS/DBaaS products, so this is difficult to justify
+  - DB or DB version that AWS does NOT provide
+  - Architecture that AWS does not provide (replication/resilience)
+  - Decision maker just "wants it"
+- Negatives
+  - Admin overhead - managing both the EC2 and DBHost
+  - Backup/Disaster Recover Management
+  - EC2 is in a single AZ
+  - Features - some of AWS DB products are very good (optimized for DB)
+  - EC2 is On or Off - no serverless, no easily scaling
+  - Replication - Skills, setup time, monitoring and effectiveness
+
+>Video 5
+#### Relational Database Service (RDS)
+- This is a Database Server as a Service (DBSaaS. It is NOT a Database as a Service (DBaaS)
+  - Multiple databases on one DB Server (instance)
+- Choice of DB Engines (MySQL, MariaDB, PostgreSQL, Oracle, Microsoft SQL Server)
+  - #### Amazon Aurora is a different product
+- Managed service - No access to OS or SSH access
+
+#### RDS Subnet Group
+- This is a subnet group that RDS can use
+  - For High Availability - AWS will pick one of the AZ in the subnets to be the primary DB and another AZ to run the standby
+- RDS can be accessed from the VPC or any connected private networks (VPN or Direct Connect)
+- You CAN place a RDS subnet group in a public subnet, but it is bad practice
+  - This is a safety problem when the DB can be publicly connected by the internet
+- RDS instances can have multiple databases on them
+- Instances have their own dedicated EBS storage per instance
+- Standby has synchronous replication (the primary replicates to standby synchronously)
+- You also have asynchronous replication to read replicas (RRs) if chosen
+- Backups and snapshots can be taken and saved in S3
+
+#### RDS Costs
+1) Instance size and type
+2) Multi AZ - More than 1 instance is required
+3) Storage type and amount (EBS volume) - GB/Month fee for cost 
+4) Data transferred
+5) Backups and Snapshots (GB/Month)
+6) Licensing (if applicable)
+
+>Video 6
+#### Relational Database Service - MultiAZ - Older architecture
+- Configuration for your primary instance to synchronously replicate to a StandBy
+- All access to the DB are by CNAME - You always access the primary DB unless there is a failover, in which case the CNAME is changed to the standby
+- All backups or snapshots are done from the standby so you do not affect the primary performance
+  - Data -> Primary -> Replicated to StandBy - Committed(synchronous)
+  - No free tier - Extra cost for replica
+  - One StandBy replica ONLY
+    - Standby cannot be used for reads or writes
+    - 60-120 second failover
+    - Same region only, but in different AZ's in the same region
+    - Backups are taken from Standby to improve performance
+    - Affected by AZ ourages, primary failure, manual failover, instance type change and Software updates
+
+#### Relational Database Service - Multi AZ - Cluster
+- FYI this is different from Cluster in Aurora
+- Writer synchronous replication to readers
+  - Replication is via transaction logs, which is more efficient
+- Limited to 1 writer and 2 readers
+  - Writer and readers are all located in different AZs
+  - Used on much faster hardware, Gravitron + NVME SSD Storage
+  - Fast writes to local storage and then flushed to EBS
+  - Readers can be used for reads and this allows for some read scaling
+- Writer is used for writing and reading
+- Readers are used for reading
+- Data is committed when 1+ reader finishes writing 
+- Each instance has its own storage (EBS)
+- Endpoints: 
+  - Cluster endpoints points at the writer. Used for reads, writes and administration
+  - Reader endpoints directs and reads to an available read instance
+  - Instance endpoints at a specific instance, usually use these for testing/fault finding
+- Failover is faster (35 s + transaction log apply)
+
+>Video 7
+#### Relational Database Service Backups - General
+- 2 Types (Both stored in S3) 
+  - #### You cannot see these in S3, only in the RDS Console
+    1) Automated backups
+    2) Snapshots
+- Backups do cause some pauses, but since they are taken from the standby (if using multi AZ)
+  - If you do not have multi-az, this is taken from the main instance so you may experience pauses
+- Snapshots are taken of the instance data
+  - Brief slowdown or pause
+  - Initial snapshot is going to be longer than update snapshots
+  - Snapshots are NOT automatically deleted - You need to manually do them
+  - Higher rate snapshots = more data transfer, less potential data loss
+- Automatic backups - Similar to automatic snapshots, but:
+  - Every 5 minutes, transaction logs are stored in S3, so you have a higher granularity on your backups for failover
+  - A retention period is enforced between 0 to 35 days, where data is then deleted after the time period
+  - You can restore the database anywhere between the retention period
+  - When you delete a database, you can choose to keep the backups BUT
+    - the backup is kept only until the retention period
+    - If you want to create a long term backup, you need to create a final snapshot that will not expire
+- RDS can replicate backups to another region
+  - Both backups and transaction logs
+  - Charges apply to cross region replication 
+    - Pay for data transfer
+    - Pay for storage in different region
+    - This is NOT default - You have to enable cross region backups explicitly
+
+#### Relational Database Service Restore
+- Creates a NEW RDS Instance with a NEW address
+- Snapshots = a single point in time, creation time
+- Automated - any 5 minute point in time
+- Backup is restored and transaction logs are then "replayed" to bring the DB up to the desired point in time (GOOD RPO)
+- Restores are NOT fast - think about RTO (*Instead use Read Replicas)
+
+>Video 8
+#### Relational Database Service Read Replicas
+- Read only replicas of a primary instance
+  - Read replicas are NOT part of the primary instance. 
+    - These have their own address
+    - These do not have automatic failover
+    - They are their own unique instance that is fed from the primary
+- Asynchronous replication -> Means Read Replicas
+- Synchronous replication -> Means Standby instances (AKA Multi-AZ)
+- #### Read replicas can be made in the same region OR different regions
+- You can create up to 5 direct read-replicas per DB instance
+  - Each providing an additional instance of read performance
+  - You can do read-replicas of read-replicas, but this causes lag to occur
+- Global performance improvements (as you can now place read replicas in different regions)
+- Improves RPO Objectives
+- RTO's are a problem (restores can take a long time, as you need to restore from a snapshot)
+- Read Replicas offer near 0 RPO (assuming there are no errors reading from the primary instance)
+- Read Replicas can be promoted quickly (Low RTO) -> switch RR to a primary
+  - Be careful, as this is for failure only, as errors are also replicated
+
+>Video 9
+#### Amazon RDS Security 
+- SSL/TLS (in transit) is available for RDS, can be manditory
+- RDS supports EBS volume encryption 
+  - Uses KMS
+- Handled by Host/EBS
+- AWS or Customer managed CMK generates Data Keys
+- Data Keys are used for encryption operations
+- Storage, Logs, Snapshots and Replicas are encrypted with the Data Keys
+  - #### Encryption CANNOT be removed
+- RDS MSSQL and RDS Oracle support TDE
+  - Transparent Data Encryption
+  - This is encryption that is supported by the DB engine (the moment data is written to disc, you know it is encrypted by the engine)
+- #### RDS Oracle supports integration with CloudHSM (Cloud Key Controls, a cluster that manages keys)
+  - CloudHSM - Much stronger key controls that AWS does NOT manage
+- The 2 types
+1) KMS - 
+   1) KMS uses a AWS generated key or customer managed key and generates a DEK (Data Encryption Key) for RDS
+   2) DEKs are loaded into the host as required
+   3) Host encrypts the data and decrypts the data - DONE BY HOST
+2) TDE - Removed AWS from the encryption process (AWS never actually sees the keys)
+   1) TDE is native DB engine encryption. Encryption is done before it leaves the instance
+      - ex. CloudHSM is used on Oracle to provide keys directly to the engine and data is encrypted before it leaves the instance. At the host, it is already encrypted
+
+#### Amazon RDS IAM Authentication
+- Normally login to a database is done separate from AWS (local users) - username and password
+- You can configure an RDS to use AWS credentials though
+  - RDS local DB account configured to use AWS Authentication tokens
+    - Policy is attached to Users or EC2 Role and maps the IAM identity into the local RDS Database User
+    - This generates a token with a 15 minute validity which can be used in place of a DB User Password (generate-db-auth-token) using IAM
+  - NOTE: Authorization is controlled by the DB engine. Permissions are assigned to the local DB User. IAM is NOT used to authorize. It is only used to authenticate through IAM.
+
+>Video 10
+#### Relational Database Service - Custom
+- Fills the gap between RDS and EC2 running a DB engine
+- RDS is fully managed - OS/Engine access is limited
+- DB on EC2 is self managed, but has overhead
+  - Currently only works for MS SQL and Oracle
+  - Can connect using SSH, RDP or Session Manager
