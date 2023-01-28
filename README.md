@@ -1579,3 +1579,124 @@ The 2 options between no select and select
 - Most instances support and enabled by default
   - For some instances, it is supported but costs extra
 - Adding dedicated capacity for storage networking to an EC2 instances
+
+### Route 53
+>Video 1
+#### R53 Hosted Zones
+- Route53 Hosted Zone is a DNS DB for a domain (eg. animals4life.org)
+- Globally resilient (multiple DNS servers)
+- Created with domain registration via R53 - can be created separately
+- Host DNS Records (eg. A, AAAA, MX, NS, TXT ...)
+- Hosted zones are what the DNS system references - Authoritative for a domain 
+
+#### R53 Public Hosted Zones
+- DNS Database (zone file) hosted by R53 (Public Name Servers)
+- Accessible from the public internet and VPCs
+- Hosted on "4" R53 name servers (NS) specific for the zone
+  - Use the NS records to point at these NS (connect to global DNS)
+- Resource Records (RR) created within the Hosted Zone
+- Externally registered domains can point at R53 Public Zone
+
+>Video 2
+#### R53 Private Hosted Zones
+- A public hosted zone which is not public
+- Associated with a VPCs
+  - Only accessible in those VPCs
+  - Using different accounts is supported via the CLI/API
+- Split-view (overlapping public and private) for public and internal use with the same zone name
+
+#### R53 Split View Hosted Zones 
+- You can create a public zone in your R53 private zone that is accessible from the public internet (The public DNS server will be able to point to your R53 private zone but not the public zone parts)
+  - Example - Want some sections (say accounting) to be only accessible with your VPC but the rest accessible to the internet, you would place the accounting address in the private zone and make a public zone to cover the rest
+
+>Video 3
+#### R53 CNAME vs ALIAS
+- "A" record maps a name to an IP Address
+  - ex. "catagramio" = 1.3.3.7
+- CNAME maps a name to another name
+  - ex. "www.catagram.io" = "catagram.io"
+  - CNAME is invalid for naked/apex (catagram.io)
+  - Many AWS services use a DNS name (ELBs)
+  - With just CNAME - catagram.io -> ELB would be invalid (cannot use CNAME)
+- ALIAS records map to a NAME to an AWS resource
+  - These can be used for Naked/Apex and normal records
+  - For non apex/naked - functions like CNAME
+  - There is no charge for ALIAS requests pointing at AWS resources
+  - For AWS Services - default to picking an ALIAS
+  - Should be the same "type" as what the record is pointing at
+  - API Gateway, CloudFront, Elastic Beanstalk, ELB, Global Accelerator and S3
+  - ALIAS is an AWS specific feature
+
+>Video 4
+#### R53 Simple Routing
+1) Simple routing supports 1 record per name (www) - A Record
+2) Each record can have multiple values that it points to and returns
+3) All values are returned in a random order
+4) The client chooses and uses 1 value (there is 1 record that is mapped to 1 A name)
+- Simple routing does not support health checks
+- Use simple touting when you want to route requests towards 1 service such as a web service
+
+>Video 5
+#### R53 Health Checks
+- Health checks are separate from, but are used by records
+- Health checks are located globally 
+- Health checks can be done every 30s (every 10s for an extra cost)
+- Covers the following checks for
+  - TCP
+  - HTTP/HTTPS
+  - HTTP/HTTPS with string matching (checks application responds with a content of a response to a specific max amount of characters)
+- Healthy/Unhealthy result
+- Monitors Endpoint, State of CloudWatch Alarm or the State of Checks of Checks (calculated)
+
+>Video 6
+#### R53 Failover Routing
+- Add multiple resources as a primary and a secondary
+- Normally, the primary resource is returned when you query it
+- If you have a failure of a health check on the primary, the secondary value of the routing is returned
+- Use for when you want to configure active passive failover
+
+>Video 7
+#### R53 Multi Value Routing
+- Multi value routing supports multiple records with the same name
+- Up to 8 "healthy" records are returned. If more exist, 8 are randomly selected
+  - Client chooses and uses 1 value (There are many A names pointing to many records, which are randomly returned)
+- Multi value improves availability. It is NOT replaceable for load balancing
+- Each record is independent and can have an associated health check
+  - Any records that fail a health check will not be returned when queried
+
+>Video 8
+#### R53 Weighted Routing
+- Used for simple load balancing or testing new software versions
+- You have multiple A records pointing at a record. Each record has a weight associated with it.
+  - This weight is summed and the record is returned based on its weight
+- A weight of 0 is never returned
+- If a chosen record is unhealthy, the process of selection is repeated until a healthy record is chosen
+
+>Video 9
+#### R53 Latency Based Routing
+- Used fod optimising performance and the user experience
+- An A record is associated with a record region.
+  - Latency based routing supports 1 record with the same name in each AWS region
+- AWS maintains a database of latency between the users general location and the regions tagged in the record
+- Records are returned based on which record offers the lowest estimation latency and is healthy
+
+>Video 10
+#### R53 Geolocation Routing
+- Very similar to latency, except the geolocation of the user is used to route and return a record
+- A record is tagged with a location, continent or default
+- An IP check verifies the location of the user (normally the resolver)
+- Geolocation does NOT return the closest record. It will return the relevant location record.
+  - Checks for 
+    1) The state
+    2) The country
+    3) The continent
+    4) Default (Optional) or a No answer
+- Can be used for regional restrictions, language specific content or load balancing across regional endpoints
+
+>Video 11
+#### R53 Geoproximity Routing
+- You need to define an AWS region or coordinates for where the resource is located
+- You can define a bias and adjust how R53 calculates the shortest distance to a location
+  - "+" or "-" bias can be added to rules. A "+" increases a region size and decreases the neighbouring regions.
+  - Routing is distance based (including bias)
+
