@@ -2414,7 +2414,7 @@ How an example works:
      - Listener is configured for HTTPS. The connections are terminated at the ELB and the backend connections use HTTP
        - Much faster but there are un-encrypted connections happening behind the ELB
 
-#### Connection Stickiness
+#### Connection Stickiness - ALB
 - With no stickiness, connections are distributed across all in-service backend instances. Unless the application handles user state, this could cause user states to be lost
 - Session stickiness:
   - Within the application load balancer, this is enabled on a target group
@@ -2467,3 +2467,495 @@ How an example works:
 15) Packets are returned and stripped of GENEVE and returned to the GWLB Endpoint
 16) The GWLB Endpoint defaults to the Internet Gateway
 17) The internet Gateway sends the packet to the client
+
+### Serverless and Application Services
+>Video 1
+#### Architecture - Event-Driven-Architecture
+- AWS has various producer and consumer services that you can build microservices around
+  - Examples: SQS, SNS, EventBridge
+- Producers generate events when something happens
+- Event-Bridge
+  - No constant running or waiting for things
+  - Clicks, errors, criteria met, uploads, actions create events
+  - Events are delivered to consumers
+    - Actions are taken and the system returns to waiting
+  - Mature event-driven architecture only consumes resources when handling events (serverless)
+
+>Video 2
+#### Lambda 
+- Function-as-a-service (FaaS) - Short running and focused
+  - Lambda function - a piece of code that lambda runs
+  - Functions use a runtime that you choose
+    - Python
+    - Ruby
+    - Java
+    - Go
+    - C#
+    - Custom runtimes like Rust using layers
+  - Functions are loaded and run in a runtime environment
+- The environment has a direct memory (indirect CPU) allocation
+  - You directly control the memory allocated for lambda functions whereas vCPU is allocated indirectly as a function of the memory increase
+- You are billed for the duration that the function runs 
+- Can be used to generate event-driven architecture 
+- Completely stateless - 512MB storage is available as /tmp storage (up to 1240MB)
+- #### Maximum function timeout - 15 minutes
+- Lambda uses an execution role and attaching it to a lambda function (IAM)
+- Generally used with 
+  - Serverless Applications (S3 and API Gateway)
+  - File processing (S3, S3 Events)
+  - Database Triggers (DynamoDB, Streams)
+  - Serverless CRON (EventBridge/CWEvents)
+  - Realtime Stream Data Processing (Kinesis)
+
+>Video 3
+#### Lambda - Networking
+#### Public Lambda - Lambda running in a Public Network
+- By Default lambda functions are given public networking. 
+  - They can access public AWS services and the public network
+  - Public networking offers the best performance because no customer specific BPC networking is required
+- Lambda function has NO ACCESS to VPC based security services unless public IPs are provided AND security controls allow external access
+
+#### Private Lambda - Lambda configured to run inside a VPC
+- Lambda functions running inside a VPC obey all VPC Networking rules
+  - EX. If the VPC does not have access to the public network, you cannot access public AWS services like DynamoDB
+    - To access public AWS services, you need to configure your VPC like you would a normal service:
+      - Using a NATGW and IGW or a VPC Endpoint to access internet resources
+- Lambda functions work like a Fargate cluster
+  - AWS Lambda services are run in the AWS Lambda Service VPC
+  - AWS analyze all the functions that are used and instead of injecting each function into a unique elastic network interface, AWS is able to consolidate all functions to access a single ENI
+- #### Treat a lambda function running inside a VPC like any other service/instance running inside a VPC
+
+#### Lambda Security
+- Lambda functions are provided Execution Roles to access resources (same as an EC2 instance role)
+  - Attached to lambda functions which control the permissions the Lambda function receives
+- Lambda Resource policy controls what services and accounts can INVOKE the Lambda functions
+
+#### Lambda Logging
+- Lambda uses CloudWatch, CloudWatch Logs and X-Ray
+  - Logs from Lambda executions - CloudWatch Logs
+  - Metrics - invocation success/failure, retries, latency - CloudWatch
+  - Distributed tracing - X-Ray
+- To allow CloudWatch Logs, you need to give permissions via Execution Roles
+
+>Video 4
+#### Lambda Invocation
+- 3 types of invocation
+1) Synchronous Invocation
+   - CLI/API invokes a lambda function, passing data and waiting for a response
+     - Lambda function responds with data or fails
+   - #### Results are Success or Failure
+     - Returned during the request
+   - #### Errors or Retries have to be handled within the client
+   - Ex. A client sends a response to the APIGW, which proxies to the Lambda function. The lambda function responds or fails and the response is returned to the client
+2) Asynchronous Invocation
+   - Typically when AWS services invoke lambda functions
+   - Reprocessing/retrying happens between 0-2 times (configurable)
+     - The lambda function handles retries
+     - For retry, Lambda function needs to be idempotent (same result each time the function is run)
+     - Events that are failed n times can be sent to a Dead Letter Queue
+       - Lambda supports destinations (SQS, SNS, Lambda and EventBridge) where successful or failed events can be sent
+   - Ex. S3 gets an object uploaded and an S3 Event is triggered (Put). Lambda is triggered (for example, uploading something to DynamoDB). If the processing of the event fails, lambda will retry between 0-2 times (configurable). Lambda handles the retry logic
+3) Event Source Mappings
+   - Typically used on Streams or Queues which do NOT support event generations to invoke Lambda (ex. Kinesis, DynamoDB Streams, SQS)
+   - Event Source Mapping - poles a stream and receives Event Source Batching
+     - Event Batches are sent to Lambda.
+       - You need to make sure that the batch has enough time to process (15 Min max)
+   - #### Permissions from the Lambda Execution role are used by the Event Source Mapping to interact with the event source
+     - Even though the Lambda itself does not read from the service, it requires the Lambda execution roll to do this
+   - SQS Queues or SNS topics can be used for any discarded failed event batches (Dead Letter Queue)
+
+>Video 5
+#### Lambda Versions
+- Lambda functions have versions - v1, v2, v3...
+- A version is the code + the configuration of the lambda functions
+- The version is immutable - It never changes once it is published and has it's own Amazon Resource Name
+- $Latest points at the latest version
+- Aliases (DEV, STAGE, PROD) point at a version (this can be changed)
+
+#### Lambda Start-up Time
+- When a lambda function is invoked,
+  - A Lambda function needs to be set up. 
+  - An execution context is the environment a lambda function runs in. 
+    - A cold start is a full creation and configuration including function code downloading
+  - If a future invocation is done somewhat soon after it is already invoked, an execution context can be re-used. 
+    - With a warm start, the same execution context is reused. A new event is passed in but the execution context setup and creation can be skipped
+  - Lambda can reuse an execution context but has to assume it cannot. 
+    - If used infrequently, execution contexts will be removed. 
+    - Concurrent executions will use multiple (potentially new) contexts
+  - Provisioned concurrency can be used. AWS will create and keep X contexts warm and ready to use. This improves start speed
+    - You can use in-memory data from the instance if it is a warm start, but you CANNOT assume you can, so you need to assume you CANNOT access the data.
+      - An efficient thing to do is check if you can use the data, otherwise default to assuming its not available. 
+
+>Video 6
+#### CloudWatch Events and EventBridge
+- EventBridge is replacing CloudWatch Events (FYI)
+  - EventBridge = CloudWatch Events V2
+- If X happens, or at Y times(s) (CRON), do z
+- Uses a default Event Bus for the account
+  - In CloudWatch Events, this is the only bus available (implicit)
+  - EventBridge can have additional event busses
+- Rules match incomming events or schedules (for CRON)
+- Route the events to 1+ targets (ex. Lambda)
+
+#### How EventBridge Works
+- When an event occurs (example, EC2 event changes) - an event is sent through the Event Bus
+- EventBridge reads the Event Bus and checks to see if the event pattern rule or schedule rule is triggered, which triggers a target (ex. Lambda)
+- Events in the event bus are just JSON objects
+
+>Video 7
+#### Serverless Architecture
+#### What is Serverless?
+- Serverless is not 1 single thing
+- You manage few, if any servers - low overhead
+- Applications are a collection of small and specialized functions
+  - Applications run in stateless and ephemeral environments
+  - Applications are billed based on duration it is run
+- Everything is Event-Driven - Consumption is ONLY when it is being used
+- FaaS is used where possible for compute functionality
+- Use Managed Services where possible 
+  - Using already made services (such as S3 or DynamoDB) instead of making your own service, if available 
+
+>Video 8
+#### Simple Notification Service 
+- Publish/Subscriber messaging service
+- Public AWS Service - Network connectivity with Public Endpoint
+  - Coordinates the sending and delivery of messages
+- SNS Topics are the base entity of SNS - Permissions and Configurations
+- A Publisher sends messages to a Topic
+- Topics have Subscribers, which receive messages
+  - ex. HTTPs, Email(-JSON), SQS, Mobile Push, SMS Messages, Lambda
+  - SNS used across AWS for notifications 
+    - ex. CloudWatch and CloudFormation
+- You can apply filters to SNS so only relevant messages get delivered from a topic to a subscriber
+- Can use Fanout architecture 
+- Offers 
+  - Delivery Status (including HTTP, Lambda, SQS)
+  - Delivery Retries - Reliable delivery
+  - Regional Resilient service (HA and Scalable)
+  - Server Side Encryption (SSE)
+  - Cross-Account via TOPIC Policy
+
+>Video 9
+#### Step Functions - A serverless state machine service
+- While you can chain Lambdas together, it gets messy at scale
+- Step Functions allow you to create State Machines using Lambda
+- Step Machine Maximum Duration - 1 year
+- 2 types of workflows
+  1) Standard Workflow - 1 year max
+  2) Express Workflow - 5 minute max
+- Started via API Gateway, IOT Rules, EventBridge, Lambda, etc.
+- Amazon States Language (ASL) - JSON Template
+- Uses IAM Roles for permissions
+- Examples of States that define actions: 
+  - Succeed and fail
+  - Wait
+  - Choice 
+  - Parallel 
+    - Multiple actions done based on one thing
+  - Map
+    - A list of things
+  - Task
+    - A single unit of work that defines a workload 
+      - ex. Lambda, Batch, DynamoDB, ECS, SNS, SQS, Glue, SageMaker, EMR, Step Functions
+
+>Video 10
+#### API Gateway
+- Service that allows you to create and manage APIs
+- Acts as an Endpoint/Entry-point for an application
+- Sits between application and integrations (services)
+- Highly available, scalable, handles authorization, throttling, caching, CORS, transformations, OpenAPI spec, direct integration with AWS services and much more
+- Public service 
+- Can connect to services/endpoints in AWS OR On-Premises
+- Can handle HTTP APIs, REST APIs and WebSocket APIs
+- API Gateway is an intermediary between clients and integrations
+- Phases:
+  1) Request 
+     - Authorizes, Validates and Transforms the request
+  2) Integrations 
+     - Backend does it's compute
+  3) Response
+     - Transform, Prepare and Return
+- CloudWatch logs can store and manage full stage request and response logs. CloudWatch can store metrics for client and integrations sides
+- API Gateway Cache can be used to reduce the number of calls made to backend integrations and improve client performance 
+
+#### API Gateway - Authentication
+- Example: Cognito can be used to integrate authentication with existing providers (ex. Google) which provides an authentication token to the client
+  - The token can then be passed to the API Gateway
+  - API Gateway can validate the token with Cognito and validate the connections
+
+#### API Gateway - Endpoint Types
+1) Edge Optimized
+  - Routed to the nearest CloudFront POP
+2) Regional - Clients in the same Region
+  - You get a regional endpoint that clients can connect to
+3) Private - Endpoint accessible only within a VPC via interface endpoint
+
+#### API Gateway - Stages
+- APIs are deployed to stages, each stage has one deployment
+  - Example: A Production and a Development endpoint, which have separate isolated stages that point to different integrations
+- Stages can be enabled for canary developments
+  - If done, deployments are made to the canary and NOT the stage
+  - Stages enabled for canary deployments can be configured so a specific percentage of traffic is sent to the canary. This can be adjusted over time, or the canary can be promoted to make it the new base "stage"
+  - Note: this is what was done in the new Loyalty Widgets work
+
+#### API Gateway Error Codes
+- 4xx - Client Error - Invalid Request on CLIENT SIDE
+  - 400 - Bad request - GEneric
+  - 403 - Access Denied - Authorizer denied - WAF Filtered
+  - 429 - API Gateway can throttle - this means you have exceeded the amount
+- 5xxx - Server Error - Valid Request, error on SERVER/BACKEND SIDE
+  - 502 - Bad Gateway Exception - Bad output returned by server
+  - 503 - Service Unavailable - Backing endpoint offline? Major service issue
+  - 504 - Integration failure/Timeout error - 29s limit exceeded
+
+#### API Gateway Caching
+- CAche is defined per stage within API Gateway
+- Cache TTL default is 300 seconds
+- Configurable min 0 and max 3600s
+- Can be encrypted
+- Cache size 500MB to 237GB
+- Calls are only made to the backend integration if the request is a Cache Miss
+- Reduces load and cost and improves performance
+
+>Video 11, 12 , 13 and 14
+#### Simple Queue Service (SQS)
+- Public, Fully MAnaged, Highly Available Queues
+  - 2 Types
+    1) Standard
+        - Order does not matter, faster
+        - Can scale better (you can have multiple streams of messages where order does not matter)
+        - At-last-once delivery - there could be on occasion more than 1 copy of a message
+        - Best-Effort-Ordering - No rigid preservation of message order
+    2) FIFO
+       - Order matters
+       - 3000 messages per second with batching, or up to 300 messages without
+       - FIFO must have a .fifo suffix
+       - Exactly-once processing - duplicates are removed
+       - Message order is STRICTLY Preserved
+- Messages can be up to 256KB in size 
+  - A link to larger data
+- Received messages are hidden with a VisibilityTimeout
+  - After the timeout, the message will reappear in the queue to be reprocessed again
+  - Or the message is deleted
+- Dead-Letter Queues 
+  - Can be set up for problem messages
+- ASG can be scaled based on the queue size and Lambdas can be built off of the queue
+- Billed based on requests
+- 1 request = 1-10 messages at a time up to 64KB total
+  - Short (Immediate) vs Long (waitTimeSeconds) Polling
+    - To reduce costs (costs per request)
+  - Encryption at rest (KMS) AND in transit
+- Queue Policy will configure how the resource can be accessed
+  - Can configure external access as an option
+
+#### Delay Queues 
+- Allow you to define delays that apply to messages in queue for your consumers
+- Visibility Timeouts 
+  - Time to process the message before we assume the message failed to process
+  - Only triggered then the message is received by the consumer
+  - Message is not reachable while it is in the visibility timeout
+  - Default is 30 seconds. Can be between 0 and 12 hours
+    - ChangeMessageVisibility changes this value
+  - Set on Queue or Per-Message
+- Delay Queue
+  - A delay queue has DelaySeconds set
+  - It will be invisible for Delay Seconds
+  - NOT AVAILABLE IN FIFO Queues
+  - Delay is between 0 to 15 minutes
+
+#### Dead Letter Queues
+- Designed to help manage errors that happen while you use an SQS queue
+- If the message has failed multiple times (that you set), the message can be sent to the dead letter queue so it does not stay in the queue
+  - redrive policy - specifies the source queue, the dead-letter queue and the conditions where messages will be moved from one to the other
+    - Define maxRecieveCount
+  - Then RecieveCount > maxRecieveCount & message is not deleted, it's move to DLQ
+- The queue will expire based on the original Enqueue timestamp, as the initial enqueue timestamp remains unchanged. 
+  - The retention period of a dead-letter queue is generally longer than the source queue 
+
+>Video 15
+#### Amazon Kinesis Data Streams
+- Kinesis is a scalable streaming service 
+  - Meant for large data streaming
+- Producers send data into a kinesis stream
+- Streams can scale from low to near infinite data rates
+- Public service and highly available by design
+- Streams store a 24-hour moving window of data
+  - Storage can increase to a maximum of 365 days for a cost
+- Multiple consumers can access the data from the moving window
+- Uses a shard architecture 
+  - Shards are defined by size
+    - 1MB Ingestion
+    - 2MB consumption
+  - The size of the stream is based on shard size
+  - Kinesis data records (1MB) are stored across shards, which can be accessed based on the Kinesis Stream window (that is defined by 24h - 1 year)
+  - Kinesis Data Fire Hose can be attached to a Kinesis stream (for immediate analysis) and this can be sent to S3 (for later analysis, say for big data analysis)
+
+#### SQS vs Kinesis
+- SQS is for 1 production group, 1 consumption group
+- SQS Queues are used for Decoupling and Asynchronous communications (splitting up your application)
+- SQS has no persistence of messages and no rolling window
+- Kinesis is designed for huge scale data ingestion
+- Kinesis is for multiple consumers
+- Kinesis has a rolling window
+- Kinesis is for Data ingestion, analytics, monitoring, app clicks
+
+>Video 16
+#### Kinesis - Data Firehose
+- Kinesis alone does NOT provide a way to persist data nor a way to deliver data
+  - It only provides a rolling window to access data within the rolling window
+- Data Firehose is a fully managed service to load data for data lakes, data stores and analytic services
+- Firehose has Automatically scaling 
+  - Fully serverless and resilient
+- NEAR real time delivery (~60 seconds). NOT REAL TIME
+- Supports transformation of data on the fly (with Lambda)
+- Billing based on volume through
+
+#### Data Firehose Delivery Targets
+1) HTTP
+2) splunk
+3) Redshift
+4) ElasticSearch
+5) S3 Destination Bucket
+
+- Kinesis streams are realtime (~200ms)
+- Producers can send records to data streams or send directly at firehose.
+  - Firehose can also read from a data stream as a consumer
+- Firehose offers NEAR REALTIME DELIVERY
+  - Delivery when buffer size in MB (1) fills, or buffer interval in seconds (60) passes
+- You can transform via Lambda
+  - Lambda transformation function blueprint 
+    - transforms data and returns it to the firehose
+  - At the same time, a backup bucket in S3 is sent the unprocessed data
+  - Then the processed data is sent to the consumers
+- The only difference in delivery is Redshift
+  - Redshift uses an intermediate S3 bucket and then copies from S3 into redshift
+
+>Video 17
+#### Kinesis - Data Analytics 
+- Data Analytics provides Real Time Processing of data using Structured Query Language (SQL)
+  - Adjusts data from input and outputs the new structured data
+- Ingests data from Kinesis Data Streams OR Firehose
+  - Can be from multiple sources and you can do something like, say, a join of data from multiple sources
+  - Uses virtual tables in application
+  - Outputs data after SQL processing
+- After data is processed, it can be sent do destinations in real-time (or near real-time if Firehose is chosen to read from)
+  - You can send to Firehose (and any of it's delivery options, S3, Redshift, ElasticSearch, Splunk) <- non-real time
+  - AWS Lambda
+  - Kinesis Data Streams
+- Can also take in S3 sources
+- Think of Data Analytics as a transformation application that transforms input data (from Kinesis Streams, Kinesis Firehose or S3) and outputs data into another Kinesis Stream or a Kinesis Firehose
+- Not cheap
+
+#### When do you use?
+- Streaming data needing Real-Time SQL Processing
+- Time-series analytics
+  - Elections, E-sports
+- Real-time dashboards 
+  - Leaderboards for games
+- Real-time metrics
+  - Security and response teams
+
+#### Kinesis - Video Streams
+- Allows you to ingest live video data from producers
+  - Security cameras, smartphones, cars, drones, time serialized audio, thermal, depth and radar data
+- Consumers can access data frame-by-frame or as needed
+- Can persist and encrypt (in-transit and at rest) data
+- #### CANNOT ACCESS DIRECTLY VIA STORAGE, ONLY VIA API
+- Integrates with other AWS services
+  - ex. Rekognition and connect
+
+>Video 18
+#### Amazon Cognito
+- Authentication, Authorization and user management for web/mobile apps
+- Provides 2 uses
+1) Provides User Pools - Sign-in and get a JSON Web Token (JWT)
+   - Allows partner login. THIS IS DIFFERENT FROM ALLOWING AWS ACCESS
+     - A joined sign in resource, helps coordinate with other providers
+   - User directory management and profiles, sign-up and sign-in (Customizable web UI), MFA and other security features
+2) Identity Pools - Allows you to offer access to Temporary AWS Credentials
+   - Unauthenticated identities - Guess Users
+   - Federated Identities - SWAP - Google, Facebook, Twitter, SAML2.0 and User Pool for short term AWS Credentials to access AWS resources
+   - IAM Role integration
+
+#### Cognito User Pools
+- A JWT is used for confirm that the user has successfully authenticated with one of the partners identities successfully
+  - JWT can be used to access self-managed server based resources
+  - User pool token CANNOT be used to access modern AWS infrastructure
+- Simplifies the management of Identity Tokens (JWT Tokens)
+- #### Manage user log in and sign up and provides JWT Tokens
+
+#### Cognito Identity Pools
+- Identity pools work with user pools to assign IAM Roles to the user that has been authenticated and provided a JWT Token (by User Pools)
+  - Swaps a JWT token with an AWS Token
+  - Provides temporary AWS credentials and the user can now access AWS resources
+- We can use Identity Federation to have this happen seamlessly 
+- #### Swaps external Identity tokens for AWS Tokens
+- #### Commonly used together with User Pools to manage external partner logins in 1 central service
+
+>Video 17
+#### AWS Glue
+- A Serverless ETL (Extract, Transform and Load)
+  - This is vs. a dara pipeline (which can also do ETL) which uses a server (EMR)
+- Moves and tranforms data between source and destination
+- Crawls data sources and generates the AWS Glue Data Catalog
+- Sources:
+  1) DStores: S3, RDS, JDBC compatible and DynamoDB
+  2) Streams: Kinesis Data Stream and Apache Kafka
+  3) Targets: S3, RDS, JDBC Databases
+
+#### Data Catalog
+- Persistent metadata about data sources in a region
+- One catalog per region per account
+- Data catalogs Avoids data silos
+- Data catalogs are used by Amazon Athena, Redshift Spectrum, EMR and AWS Lake Formation
+  - You then configure crawlers to look through data catalogs to collect data
+- The data catalog can then be used by members to see data from various sources in the data catalog
+- Glue extracts data in a "Glue Job" which are initiated manually or via events using EventBridge
+- Data is loaded into S3, RDS and JDBC Compatible
+- When resources are required, flue allocated from AWS warm pool to perform ETL processes
+- When to use?
+  - Serverless
+  - An ETL and Data Catalog service all in 1
+  - Ad-hoc or cost effective, pick Glue
+
+>Video 18
+#### Amazon MQ
+- An SNS and SQS-like product in 1
+- SQS and SNS are AWS services using AWS APIs
+  - SNS provides Topics and SQS provides Queues
+  - Public services, Highly scalable, AWS Integrated
+- If a system is existing that is NOT SQS or SNS, Amazon MQ provides an open source message broker solutions
+  - Think migration
+- Based on Managed Apachie ActiveMQ
+  - JMS API
+  - Protocols such as AMQP, MQTT, OpenWire and STOMP
+- Provides Queues and Topics
+- One-to-one or one-to-many
+- This is a single instance (Test, Dev, Cheap) or a HA Pair (Active/Stanyby)
+- This is VPC Bases - NOT A PUBLIC SERVICE - Private Networking is required
+- No AWS Native integration. 
+  - Delivers activeMQ product which you manage
+- #### An instance that runs the messaging service in your VPC
+- #### To migrate your existing on-prem infra, you need to configure the connection via private VPC connections into AWS
+
+#### When to use Amazon MQ
+- Use SNS and SQS for most new implementations (default)
+- SNS or SQS if AWS integration is required (logging, permissions encryption, service integration)
+- Amazon MQ if you need to migrate from an existing system with little to no application change
+- Amazon MQ if APIs such as JMS or protocols such as AMQP, MQTT, OpenWire and STOP are needed
+- Remember you need private network access for Amazon MQ
+
+>Video 19
+#### Amazon AppFlow
+- Fully-managed integration service
+- Exchange data between applications (connectors) using flows
+  - Sync data across applications
+  - Aggregate data from different sources
+- Public endpoints, but works with PrivateLink (privacy)
+- AppFlow Custom Connector SDK (Build your own)
+- Examples: Contact records from Salesforce into Redshift or Support Tickets from Zendesk into S3
+- Connections store configurations and credentials to access the applications
+  - Configure Source to Destination field mapping
+  - Optional Data Transformation
+  - Optional Configure filters and validation
+- Connections can be reused across many flows - they are defined separately 
