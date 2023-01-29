@@ -2184,3 +2184,286 @@ The 2 options between no select and select
     - Vault lock - a Write-once, Read-Many (WORM), 72 hour cool off, then even AWS cannot delete
   - On-Demand - Manual backups created as needed
   - Point in time recovery - PITR
+
+### High Availability and Scaling
+>Video 1
+#### Regional and Global AWS Architecture
+- Global parts
+  - Global service location and discovery
+    - How a user detects your infra and connects globally
+  - Content delivery network (CDN) and optimisation
+    - How information/data gets delivered on a global scale
+  - Global health check and failover
+    - How a system is maintained globally
+- Regional parts
+  - Regional entry point
+  - Scaling and resilience
+  - Application Services and components
+
+How an example works:
+1) Globally DNS is used for service discover, regional health checks and routing 
+   - Can use with failover (point to another location if required) and re-routing
+   - Go to the regional side
+     - R53 will enter the AWS region
+     - Connect to the Web Tier (a load balancer or API gateway)
+     - Connect to a compute tier (EC2, Lambda)
+         - Connect to a caching tier
+         - Connect to a DB tier
+         - Connect to App services (ex. SQS, SNS, Kinesis)
+         - Connect to a storage system
+     - Can store or cache to CloudFront
+     
+2) A CDN layer Cloudfront - CDN's are used to cache content globally - as close to the end user as possible to improve user experience
+
+>Video 2 and 3 and 4
+#### Elastic Load Balancer
+- 3 Types of ELB (ELB refers to all 3)
+- 1 x Version 1 (avoid/migrate) and 2 x version 2 (prefer)
+  1) Classic Load Balancer (CLB) - V1 - Introduced in 2009
+     - Not really layer 7, lacking features, 1 SSL per CLB
+  2) Application Load Balancer (ALB) - v2 - HTTP/S/WebSocket
+  3) Network Load Balancer (NLB) - V2 - TCP, TLS and UDP
+- V2 = faster, cheaper, support target groups and rules
+
+#### Elastic Load Balancer Architecture
+- A ELB accepts connections from a user and distributes it to your services
+- Choices to pick
+  - IPv4 only or Dual stack (IPv4 AND IPv6)
+  - The AZ (2 or more) you will be using (specifically the subnet in 2 or more AZs)
+- Based on the subnets you pick on the configuration, the load balancer will deploy 1 or more load balancer nodes in the AZs in the subnet (and scale within that AZ with load)
+  - Each ELB is configured with an (A) record DNS name. This resolves to the ELB Nodes
+  - Choice between internal or internet facing
+    - Internal: Nodes have private IP Address
+    - Public: Notes are allocated public IP Addresses
+  - Load balancers (notes) are configured with listeners which accept traffic on a port and protocol and communicate with targets on a port and protocol
+  - #### Internet facing Load Balancer Nodes can access Public AND private EC2 instances
+  - Require 8 or more FREE IP addresses in the subnet they are operating in (/28 is technically correct but it should be more, like /27)
+  - Load balancers are used to separate different tiers in an application
+- ELB Architecture uses load balancers before the Auto Scaling Group. 
+  - The ELB nodes will communicate with the Web Auto Scaling Group, which will point to the next tier Elastic Load Balance, etc.
+  - ELB allows tiers (the Auto Scaling Groups) to scale independently from each other as they are abstracted from the other tiers 
+
+#### Cross Zone Load Balancing
+- A Load Balancer can have multiple nodes in various AZs, which splits incoming traffic to each of the AZ's. 
+- Cross Zone Load Balancing means the load balancer can use nodes from one AZ and connect/point them to instances in different AZ's to more evenly distribute workloads
+- Enabled by default
+
+#### Important Notes about ELB
+- ELB is a DNS A Record pointing at 1+ nodes per AZ
+- Nodes (in one subset per AZ) can scale 
+- Internet-facing means nodes have public IPv4 IPs
+- Internal is private only IPs
+- EC2 DO NOT need to be public to work with a Load Balancer
+- Load balancers are configured with listener configurations 
+  - What the Load balancer does
+- 8+ Free IPs per subnet required, technically /28 subnet size for scaling but /27 suggested
+
+#### Application and Network Load Balancers (ALB vs NLB)
+#### Load Balancer Consolidation
+- Version 1 does not scale, as we can only attach 1 SSL certificate
+  - Example, if you want to point to 2 different websites with different SSL certificates, you would need 2 separate version 1 Load Balancers to accomplish this
+- Version 2 scales, as you can attach multiple SSL certificates and create rules for the Load Balancer
+  - You can have 1 version 2 application load balancer pointing at both websites and rules (using SNI) that determine the target group. Allows consolidation
+
+#### Application Load Balancer Differences
+- Layer 7 Load Balancer
+  - Listens to HTTP and/or HTTPS
+- No other layer 7 protocols (such as SMTP, SSH, Gaming, etc)
+  - No TCP/UDP/TLS listeners
+- L7 content type, cookies, custom headers, user location and app behaviour can be checked
+- HTTP and HTTPS (SSL/TLS) is always terminated on the ALB
+  - The SSL is ALWAYS broken at the Application Load Balancer, which could be a security issue
+- All Application Load Balancers MUST have an SSL certification if HTTPS is used
+- Application Load Balancers are slower than Network Load Balancers
+  - More levels of the network stack to process
+- Heal checks evaluate application health at Layer 7
+
+#### Application Load Balancer Rules
+- Rules direct connections which arrive at the listener
+- Processed in priority order
+- Default rule -> this will be a catchall
+- Rule conditions: Host-header, HTTP-header, HTTP-request-method, path-pattern, query-string and source-IP
+- Actions: Forward, Redirect, Fixed-response, Authenticate-oidc and Authenticate-cognito
+  - For example, a rule can forward a connection to an alternative target group based on a customer static source IP
+- You can redirect or take actions against anything you can see at layer 7
+
+#### Network Load Balancers
+- Layer 4 Load Balancers 
+  - TCP, TLS, UDP, TCP_UDP
+- No visibility or understanding of HTTP or HTTPS
+- No headers, no cookies, no session stickiness 
+- Really really fast (millions of rps, 25% of ALB latency)
+  - Used for SMTP, SSH, Game servers, Financial apps (not HTTP/s)
+- Health checks just check ICMP/TCP handshakes. Cannot be app aware
+- NLB's have static IP's - useful for whitelisting
+- Forward TCP to instances <- Unbroken encryption (HTTPs will be handled at the resource)
+- Use with private link to provide services to other VPCs
+
+#### ALB vs NLB (Why you would use a NLB over an ALB)
+1) Unbroken encryption - NLB
+2) Static IP for whitelisting - NLB
+3) The fastest performance - NLB
+4) Protocols NOT HTTP or HTTPS - NLB
+5) Private Link - NLB
+6) Anything else - ALB
+
+>Video 5
+#### Launch Configurations and Launch Templates
+- Allows you to define the configuration of an EC2 instance in advanced
+  - AMI, Instance type, Storage and Key-pair
+  - Networking and Security Groups
+  - Userdata and IAM role
+- Both are NOT editable - define once. 
+  - Launch Templates has versions
+- Launch Templates provide new features. including T2/T3 unlimited, Placement Groups, Capacity reservations, Elastic Graphics
+- Launch Configurations and Launch Templates are used by Auto Scaling Groups
+- Launch Templates can ALSO be used for launching EC2 instances
+  - Launch templates can save time when provisioning EC2 instances from the console UI/CLI
+
+>Video 6
+#### Auto Scaling Groups
+- Provide Automatic Scaling and Self-Healing for EC2
+- Uses Launch Templates or Configurations
+  - Link a Launch Template version or a Launch Configuration
+  - Had a Min, Desired and Maximum size for the group (ex. 1:2:4)
+- Keep running instances at the Desired Capacity by provisioning or terminating instances
+- Scaling policies automate based on metrics
+- Autoscaling groups are attached to a subnet that contains AZs, and the autoscaling group will try to match each AZ to match the desired size of instances
+- Scaling types:
+  - Manual Scaling - Manually adjust the desired capacity
+  - Scheduled Scaling - Time based adjustment (ex. Sales based on time)
+  - Dynamic Scaling
+    - Simple - Based on a metric - ex. "CPU Above %50 +1", "CPU Below %50 -1" or length of SQS queue
+    - Stepped scaling - Bigger based on +/1 difference (allows you to add bigger in a non-linear way)
+    - Target tracking - ex. Desired aggregate CPU = %50
+- Cooldown Periods - An amount of time to prevent a change by the scaling group so you dont get charged or change something too fast (allows steady state changes)
+- Note: If you put an autoscaling group in a subnet and set min:desired:max to 1:1:1, it will auto heal with 1 instance in all AZs in the subnet
+- You can use the Application Load Balancer health checks rather than the EC2 status checks for confirming a healthy check (ex. if you detect failure on the ALB, you can restart the EC2 instances)
+
+#### Scaling Processes
+- Launch and Terminate - Suspend and Resume
+- AddToLoadBalancer - add to LB on launch
+- AlarmNotification - accept notification from CloudWatch
+- AZRebalance - Balances instances evenly across the AZ
+- HealthCheck - instance health checks on/off
+- ReplaceUnhealthy - Teminate unhealthy and replace
+- ScheduledActions - Scheduled on/off
+- Standby - Use this for instances "InService vs Standby"
+
+#### Final Points
+- Autoscaling groups are free
+  - Only charged for the resources that created to be billed
+    - Use cool downs to avoid rapid scaling
+- Think about more, smaller instances (granularity)
+- Use ALB's for elasticity - abstraction
+- ASG(Auto Scaling Groups) Defines WHEN and WHERE, LT (Launch Templates) defines WHAT
+
+>Video 7
+#### Auto Scaling Group Scaling Policies
+- ASGs do NOT need scaling policies - they can have none
+- Manual scaling - Min, Max and Desired - Testing and Urgent
+- Scaling
+  1) Simple Scaling - Add or remove a set amount based on an alarm (linear)
+  2) Step Scaling - Add or remove different amounts based on an alarm (non-linear) 
+  3) Target Tracking - Define an ideal value and the ASG will calculate adjustments to try to keep the metric at your target value
+  5) Scaling based on SQS - ApproximateNumberOfMessagesVisible
+
+>Video 8
+#### ASG Lifecycle Hooks
+- Custom actions on instances during ASG Actions
+  - Instance launch or instance terminate transitions
+- Instances are paused within the flow (they wait)
+  - Until a timeout (then either continue or abandon)
+  - Or you resume the ASG process CompleteLifecyleAction
+- Can work/integrated with with EventBridge or SNS Notifications
+- Example:
+  1) The ASG scales out
+  2) The instance is provisioned
+  3) The instance is on Pending: wait <- lifecycle hook activated
+  4) Load some data or index something
+  5) Pending: Proceed <- lifecycle action
+  6) Instance is now in service
+  7) Notifications can be sent out to an SNS topic or an EventBridge can be used to initiate another process
+- Can be done for scaling out or in
+
+>Video 9
+#### ASG HealthCheck Comparison - EC2 vs ELB
+- EC2 (Default)
+  - Stopping, Stopped, Terminated, Shutting Down or Impaired (not 2/2 status) = Unhealthy
+- ELB (Can be enabled)
+  - Running and Passing ELB Health Check = Healthy
+    - Can be more application aware (Layer 7)
+- Custom 
+  - Instances marked healthy and unhealthy by an external system
+  - Health check grace period (default 300s) - Delayed before starting checks
+    - Allows system launch, bootstrapping and application start
+    - Can be a cause for an instance failing and restarting continuously 
+
+>Video 10
+#### SSL Offload and Session Stickiness
+- 3 ways a Load Balancer handles it's connections
+  1) Bridging - ELB
+     - Listener is configured for HTTPS. Connection is terminated on the ELB and the ELB needs a certificate for the domain name.
+     - The ELB then initiates new SSL connections to the backend instances. Instances need SSL certificates and the compute required for cryptographic operations
+       - The ELB decrypts the message to check the message, and then it will encrypt the message again, which needs to be decrypted at the instances (all instances will require a certificate to decrypt from the ELB)
+  2) Pass-through - NLB
+     - Each instance needs to have the appropriate SSL certificate installed. With this architecture, there is NO Certificate exposure to AWS... it is entirely self-managed and secured
+     - Listener is configured for TCP. No encryption or decryption happens on the NLB. Connections are directly passed to the backend instance.
+  3) Offload - ELB
+     - ELB to instance connection use HTTP - no certificate or cryptographic requirements
+     - Listener is configured for HTTPS. The connections are terminated at the ELB and the backend connections use HTTP
+       - Much faster but there are un-encrypted connections happening behind the ELB
+
+#### Connection Stickiness
+- With no stickiness, connections are distributed across all in-service backend instances. Unless the application handles user state, this could cause user states to be lost
+- Session stickiness:
+  - Within the application load balancer, this is enabled on a target group
+  - The load balancer contains a cookie that has a session with a customized duration (you define)
+  - The user will be directed to the specific instance
+  - If the instance fails, the user will be redirected to a new instance
+- In an ideal world, you would likely want to use a stateless ASG and have a cache to handle the user state
+
+>Video 11
+#### Gateway Load Balancer (GWLB)
+#### Why use a GLB?
+- If you want to have a security appliance that scans data before a connection enters you application, you would have to put an instance infront of your application to filter information before it gets sent to your app
+- The problem is that as things scale, it becomes increasingly difficult to scale both the app and the protection instances at the same time without causing confusion and issues with networking
+
+#### What is a GWLB?
+- A GLB helps you run and scale 3rd party appliances for security (that you would need instances to run in say, a separate security VPC)
+  - Things like firewalls, intrusion detection and prevention systems
+  - Inbound and Outbound traffic (transparent inspection and protection) is required
+- Use GWLB endpoints - traffic enters and leaves via these endpoints
+- The GWLB balances across multiple backend applicances
+- The GWLB uses a tunnelling protocall called GENEVE for traffic and metadata
+  - Geneve are where original packages remain unaltered encapsulated through the application and back
+  - The GWLB then points to the horizontally scaled security appliance that checks the packets 
+  - The information is returned with GENEVE
+  - The packets are routed back to the traffic destination
+- GWLB - How it works
+  1) Traffic can be routed via a route table to the GWLB Endpoints 
+  2) The GWLB Endpoint gets pushed to the GWLB itself
+  3) With GENEVE the original packages remain unaltered encapsulated through to the security application and processed
+  4) The information is returned with GENEVE to the GWLB
+  5) The GENEVE encapsulation is removed
+  6) The GWLB points back to the GWLB Endpoint 
+  7) The packets are routed back to the traffic destination
+
+### Example <- Important
+1) Client accesses an Internet Gateway (as in ingress gateway)
+2) The Gateway route table translates the destination IP to the private IP, which is directed to the GWLB Endpoint in the right AZ
+3) The GWLB Endpoint forwards the packet to the GWLB itself with the original Source and Destination unchanged
+4) Packets are encapsulated with GENEVE at the GWLB and are sent to the security appliances, which run in an Auto Scaling group 
+5) Analysis takes place in a scalable way
+6) Packets are returned and stripped of GENEVE and returned to the GWLB Endpoint
+7) The GWLB Endpoint redirects the packet to the Application Load Balancer (the CIDR range) 
+8) The ALB will send the packet to the application
+9) The application processes the data
+10) The application sends the packet back to the ALB (as the default route)
+11) The application load balancer sends the packet to the GWLB Endpoint via default route
+12) The GWLB Endpoint redirects the packet to the GWLB 
+13) Packets are encapsulated with GENEVE at the GWLB and are sent to the security appliances, which run in an Auto Scaling group
+14) Analysis takes place in a scalable way
+15) Packets are returned and stripped of GENEVE and returned to the GWLB Endpoint
+16) The GWLB Endpoint defaults to the Internet Gateway
+17) The internet Gateway sends the packet to the client
