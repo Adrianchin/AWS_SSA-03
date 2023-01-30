@@ -2959,3 +2959,221 @@ How an example works:
   - Optional Data Transformation
   - Optional Configure filters and validation
 - Connections can be reused across many flows - they are defined separately 
+
+### Global Content Delivery and Optimization
+>Video 1
+#### Cloudfront Architecture
+- Terms:
+  - Origin - The source location of your content
+    - S3 Origin or a Custom Origin
+  - Distribution 
+    - The "configuration" unit of CloudFront
+  - Edge Locations
+    - The local cache of your data
+  - Regional Edge Cache 
+    - Larger version of an edge location. Provides another layer of caching
+- In general, workflow:
+  1) User checks edge location cache
+  2) If edge location cache miss, checks Regional edge cache
+  3) If cache miss, fetch origin
+  4) Return origin content to regional edge cache and edge location cache, and return to user
+  5) All other users will get cache from edge location or regional cache
+- Integrates with ACM (certificate manager) for HTTPS
+- Upload direct to Origins. There are no read/write with CloudFront. 
+  - Uploads are handled at origin and NOT at edge locations
+- Distributions contain configurations when they are deployed to the edge location
+  - Cache behaviors sit between the origins, and the origin->cache behavior is defined by this configuration
+    - Example: How to route something if there is a cache miss
+  - It will match patterns and then a behavior is used. Otherwise, it defaults
+
+>Video 2
+#### CloudFront Behaviors
+- You select what path pattern to match, and then you can choose what to do with the options
+  - example: 
+    - which origin or origin groups to route to, 
+    - cache behavior, 
+    - response header policy, 
+    - TTL settings, restricting viewer access (with trusted key groups or trusted signers, which will require tokens or signed URLs) etc.
+
+>Video 3
+#### CloudFront TTL and Invalidations
+- When a cache is stored on the cache from the origin, the object is always returned to the user
+- Once the Object expires (via TTL, Time to live) the origin checks the origin for the object version
+  - If the object is the same as the one in the cache, a 304 is returned (not modified)
+  - If the object is old, a 200 is returned and the object is updated to the new object
+#### Exam Power Up
+- The more cache hits, the lower the origin load
+  - Default validity period (TTL) is 24 Hours
+- You can set minimum TTL and Maximum TTL
+- Headers:
+  - Origin Header: Cache-Control max-age(seconds)
+    - Setting this will set the TTL in CF for cache expiration
+  - Origin Header: Cache-Control s-maxage(seconds)
+    - Setting this will set the TTL in CF for cache expiration
+  - Origin Header: Expires(Date and Time)
+    - Setting a date and time that will set the TTL in CF for cache expiration
+  - The Minimum and Maximum TTL values are the min and max that the origin headers will max or min at (if its more than the max, the max is set. If its less than the min, the min will be set)
+  - Can be set using Custom Origin or S3 (Via Object Metadata)
+
+#### Cache Invalidations
+- Cache Invalidations are performed on a distribution
+- Invalidations apply too all edge locations.
+  - Invalidation takes time to complete
+  - ex. /images/filename.jpg <- invalidate the file itself
+  - ex. /images/filename* <- invalidate all files of filename*
+  - ex. /images/* <- invalidate everything under images
+  - ex. /* <- invalidate all files
+  - Versioned file names would be a good idea to use (ex. wiskers1_v1.jpg vs wiskers1_v2.jpg) <- this prevents having to invalidate everything, which costs money
+
+#### AWS Certificate Manager (ACM)
+- HTTP - Simple and insecure
+- HTTPS - SSL/TLS Layer of Encryption added to HTTP
+  - Data is encrypted in transit
+  - Certificates prove identities 
+  - Chain of Trust - Signed by a trusted authority
+- ACM lets you run a public or private Certificate Authority (CA)
+- Private CA - Applications need to trust your private CA
+- Public CA - Browsers trust a list of providers, which can trust other providers
+- ACM can generate or import certificates
+- If generated, it can automatically renew them
+- If imported, YOU ARE RESPONSIBLE for renewal
+- Certificates can be deployed out to supported services
+- Supported AWS Services ONLY
+  - eg. CloudFront and ALB... NOT EC2
+- ACM is a regional service
+- Certificates cannot leave the region they are generated of imported in
+- #### To use a certificate with an ALB in ap-southeast-2, you NEED a cert in ACM in ap-southeast-2
+- #### For Global Services such as CloudFront, operate as through within us-east-1 
+
+>Video 4
+#### CloudFront and SSL/TLS
+- CloudFront Default Domain Name (CNAME)
+  - ex. https://d111111abcdef8.cloudfront.net/
+- SSL Supported by default (*.clouddfront.net cert)
+- Alternative Domain Names (CNAMES) ex. cdn.catagram.... require certifications 
+- To add your own name:
+  - Verify Ownership (optionally HTTPS) using a matching certificate
+  - Generate or import into ACM
+    - #### INTO us-east-1
+  - Options
+    - HTTP or HTTPS
+    - HTTP => HTTPS
+    - HTTPS Only
+  - Two SSL Connections: Viewer => CloudFront and Cloudfront => Origin
+    - Both need to have valid public certificates (and intermediate certificates)
+      - Self-signed certs WILL NOT WORK
+
+#### CloudFront and SNI
+- Historically, every SSL enabled site needed its own IP
+- Encryption starts at the TCP connection (lower layer than HTTPs, level 7)
+- With HTTPS, Host headers happen after that - Layer 7 // Application Layer
+- SNI is a TLS extension, allowing a host to be included before a connection is made (which was impossible before this was added)
+  - Resulting in many SSL Certs/Hosts using a shared IP
+  - Old browsers don't support SNI
+    - CF charges extra for dedicated IP
+      - Dedicated IP at each CF edge location to support non-SNI Capable Browsers
+  - Viewer Side 
+    - Certificate issued by a trusted certificate authority (CA) such as Comodo, DigiCert or Symantic or ACM (us-east-1) MATCHES THE DNS NAME
+  - Origin side
+    - Origins need to have certificates issued by a trusted authority (CA) 
+    - ALB can use ACM, others need to use an external generated certification. NO SELF SIGNED CERTS
+
+>Video 5
+#### Origin Types and Architecture
+- You can use custom headers that only accept headers you configure for your custom Origin
+- Custom Origins allow you to set custom ports for you to connect to (for your custom origin)
+  - Can customize for 
+    - HTTP port
+    - HTTPS port
+    - To match if you use both
+
+>Video 6
+#### Securing CloudFront and S3 using OAI (Origin Access Identity)
+- How to deny access to your services behind a CloudFront Distribution where only CloudFront has access to the resource (or S3)
+- This is applicable when you do not use the static website feature of S3
+- For AWS Origins
+  - An OAI is a type of identity
+    - It can be associated with CloudFront Distributions
+    - CloudFront "becomes" that OAI
+    - The OAI can be used in S3 Bucket Policies
+    - You can then Deny ALL but one or more OAIs (only allow access to CloudFront in this case)
+  - A CloudFront distribution (so in this case, an edge location) will now be able to access the resource through an OAI allow
+- What about custom origins? (Non-AWS origins)
+  - Force HTTPS to be used when edge locations are accessed
+  - Force HTTPS to be used to access the custom origin
+  - Force a requirement for a custom header to be injected at the edge location and accept only a custom header via HTTPS at the origin 
+    - Only the CloudFront would be able to know the custom header
+- OR
+  - Add AWS publishes the IP ranges of the edge locations
+  - Add a Firewall to your Custom Origin to accept ONLY IP ranges of the CloudFront servers
+  - Only CloudFront will be able to access the Origins
+
+>Video 7
+#### CloudFront Private Behaviours - Signed URLs and Cookies
+- CloudFront can be run in 2 ways
+  - Public
+    - Open Access to objects
+  - Private
+    - #### Requests require signed cookies or a secure URL
+- Multiple behaviours
+  - each is public OR private
+- Old way to access a private CloudFront
+  - A CloudFront Key is created be an Account Root User
+  - The Account is then added as a TRUSTED SIGNER
+- The new way is by using
+  - Trusted Key Group(s) added
+
+#### Difference between signed URL's and signed cookies
+- Signed URLs provide access to ONE OBJECT
+  - Historically RTMP distributions could not use cookies
+- Use URL's if your client does NOT support cookies
+- Use Cookies provide access to a group of objects
+- Use Cookies for groups of files/all files of a type (ex. all cat gifs)
+- Use Cookies if maintaining application URL's is important
+
+#### Example
+- Application wants to get access to private pictures that require restricted access
+1) The user application connects to CloudFront, which forwards the un-authenticated request to the API Gateway
+2) Using ID Federation, the API Gateway adds identity authentication tokens with the request to a lambda sign-on function, which generates a cookie for the user. This cookie is returned to the user to access the private S3 bucket
+3) The user receives the cookie, and sends another request with the cookie included back to CloudFront with a request for S3
+4) CloudFront forwards the request along to S3 with the Cookie. The cookie is accepted (signed cookie) and pictures are returned from S3
+- Note that the S3 bucket is also secured with one of the methods to prevent bypassing (likely OAI identity in the bucket policy)
+
+>Video 8
+#### Lambda at edge
+- A feature that allows you to run lightweight lambda functions at edge locations
+- Adjust data between the viewer and the origin
+- Currently supports Node.js and Python
+- Run in the AWS Public Space (NO VPC)
+- Layers are NOT SUPPORTED
+- Different limits vs normal lambda functions
+- Can be placed between
+  1) Between the view and CloudFront
+     - Limits of: 128MB and 5 seconds
+  2) Between CloudFront and the origin
+     - Limits of: 128MB and 30 seconds
+  3) Between the Origin and CloudFront
+     - Limits of: 128MB and 30 seconds
+  4) Between CloudFront and the viewer
+     - Limits of: 128MB and 30 seconds
+- Can be used for:
+  - A/B Testing - Viewer Request (redirect by changing the URL)
+  - Migration between different S3 origins - Origin Request - Redirect the origin request in a controlled way
+  - Different objects based on device - Origin Request
+  - Content by country - Origin Request
+
+>Video 9
+#### AWS Global Accelerator
+- Optimizing data transfer between the user to the origin
+- Starts with 2 anycast IP Addresses that a user connects to over the public network
+  - Anycase - IP's allow a single IP to be in multiple locations. Routing moves traffic to the closest location
+    - This means that the user will be routed to the nearest edge location with anycast IP addresses, which will then be placed on the AWS network
+- From an edge location, data transits globally across the AWS global backbone network. Much faster
+- Moves the AWS network closer to the customer
+- Connections enter at edge using anycast IP addresses
+- Transits over AWS Backbone to 1+ locations
+- Global Accelerator is for NON HTTP/S (TCP/UDP)
+  - Difference from CloudFront
+- Global Accelerator does NOT CACHE information
+- Global Accelerator does NOT do anything with HTTPS - Cannot use layer 7 stuff (security) like CloudFront. 
+  - Network speed only
