@@ -3522,3 +3522,29 @@ How an example works:
     - Object lock is not supported - Use read only mode on other shares or tightly control file access for security
   - You can create multiple buckets in various regions to replicate the fileshare S3 bucket and impliment cross-region replication
   - You can configure lifecycle moves in S3 to move files into various object storage classes to automatically move files to save costs
+
+>Video 10
+#### Snowball/Edge/Snowmobile
+- Ordered from AWS
+  - With data, empty, return
+  - Empty, fill with data, upload to AWS
+- Snowball
+  - Ordered from AWS
+  - Encrypted with KMS
+  - 50TB ot 80TB
+  - 10TB to 10PB economical range (multiple devices)
+  - Multiple devices on premises
+  - Storage only, NO compute
+- Snowball Edge
+  - Contains Compute
+  - Larger capacity than Snowball
+  - Faster upload than Snowball
+  - Versions:
+    - Storage Optimized (with EC2)
+    - Compute Optimized
+    - Compute with GPU
+  - Ideal for remote sites or where data processing on ingestion is needed
+- Snowmobile 
+  - A truck that allows for large data transfer
+  - Single location where 10+PB is required
+  - Store up to 100PB of storage per Snowmobile
