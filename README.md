@@ -3177,3 +3177,109 @@ How an example works:
 - Global Accelerator does NOT CACHE information
 - Global Accelerator does NOT do anything with HTTPS - Cannot use layer 7 stuff (security) like CloudFront. 
   - Network speed only
+
+### Advanced VPC Networking
+>Video 1
+#### VPC Flow Logs
+- Capture metadata (DOES NOT CAPTURE CONTENTS in a VPC)
+- Flow logs can be captured (downwards) by:
+  - Attached to a VPC 
+    - All ENIs in that VPC
+  - Attached to Subnets
+    - All ENIs in that Subnet
+  - To ENIs directly
+- Flow Logs are NOT REAL TIME
+- Log destinations are required
+  - S3 or CloudWatch Logs
+  - Or Athena for querying (ad hoq SQL-like querying engine)
+
+>Video 2
+#### Egress-Only Internet Gateway
+- With IPv4 addresses are private or public
+  - NAT allows for private IPs to access the public networks
+    - NAT does NOT allow externally initiated connections IN
+- With IPv6 all addresses are public
+- Internet Gateway (IPv6) allows all IPs IN AND OUT
+- Egress-Only is outbound ONLY for IPv6
+- Egress-Only Gateways are Highly Available by default across all AZs in the region - Scales are required
+  - Same as the normal Internet Gatewats
+- Default IPv6 Route ::'0 added to the Route Table with eigw-id as the target
+
+>Video 3
+#### VPC Endpoints (Gateway)
+- Provide private access to S3 and DynamoDB
+  - Allow a private resource in a private only VPC to access a public service
+  - Normally you would need some infrastructure with public access to access these public services
+- Prefix List is added to the route table and uses the Gateway Endpoint as the target
+  - The Gateway Endpoint acts as a destination and uses the Gateway Endpoint instead of the Internet Gateway
+- Highly Available across all AZs in a region by default 
+- Does NOT go into another subnet. It can be connected in the same subnet as the source
+- You can only access the Gateway Endpoint from within the VPC
+  - You use Subnet Lists and the VPC Router to point directly to the Gateway Endpoint, which is Highly Available in the VPC 
+  - You cannot access the Gateway Endpoint from outside the VPC since it uses the Prefix List and is Subnet Associated
+- Endpoint policy is used to control what can access the endpoint
+- Gateway Endpoints are regional. They CANNOT access cross-regions
+- Prevents Leaky Buckets - S3 Buckets can be set to private only by allowing access ONLY from a specific gateway endpoint
+  - You implicitly deny everything EXCEPT the gateway endpoint
+
+#### Typically
+- A private only instance would usually go through a NATGW, then go through the VPC router and then go through the Internet Gateway to say, S3
+- With a VPC Endpoint Gateway, the private instance has a Prefix List on the Subnet List that points to the VPC Gateway Endpoint (via the VPC Router), which points directly to the public resource, say, S3
+  - Does not go through the public internet, nor does it go through a different Subnet
+
+>Video 4
+#### VPC Endpoints (Interface)
+- Provide private access to AWS Puiblic Services
+  - Historically, we used Interface Endpoints for anything NOT S3 and DynamoDB... until recently, as S3 is now supported!
+- Added to specific subnets as an ENI. 
+  - THIS IS NOT HIGHLY AVAILABLE
+  - To be highly available, you need to add one endpoint per subnet per AZ used in the VPC
+- Network access controlled via Security Groups
+- Endpoint Policies - Restrict what can be done with the endpoint
+  - TCP and IPv4 ONLY
+  - #### Uses PrivateLink
+    - Allows 3rd party applications to be deployed directly into your VPC
+- Endpoint provides a NEW service endpoint DNS
+  - Ex. vpce-123-xyz.sns.us-east-1.vpce.amazonaws.com
+    - Endpoint Regional DNS
+    - Endpoint Zonal DNS
+  - Applications can optionally use a new service endpoint DNS or
+    - PrivateDNS overrides the default DNS for the service
+- If the service is in a public subnet, it will go via the public endpoint name via the Internet Gateway (public DNS name)
+- If the service is in a private subnet, an interface endpoint will be added in the public zone and connect to the service via the interface endpoint (an ENI configured for a specific service) <- as if the service is injected into the VPC, never goes to the public internet
+- If the service uses a private DNS, it will ALWAYS resolve/go through the interface endpoint and it will be routed via the Interface Endpoint
+
+#### Exam Powerup
+- Gateway Endpoints
+  - Uses prefix lists and route tables
+    - Never requires changes to the app
+    - The app thinks its accessing services directly
+    - Is Highly Available
+    - Only S3 or DynamoDB
+- Interface Endpoints
+  - Uses DNS and Interface Endpoints to access services
+  - Can use public DNS or private DNS to access the service
+    - public DNS
+      - will resolve to the service via Internet Gateway if a public service
+      - will resolve to the Interface Endpoint (ENI) if in a private subnet
+    - private DNS
+      - will always resolve to the Interface Endpoint if 
+  - Is NOT highly available
+    - Requires an Interface Endpoint in every AZ to be HA (ENI)
+  - Anything not DynamoDB
+
+>Video 5
+#### VPC Peering
+- Lets you create a Direct encrypted network link between 2 VPCs
+  - ONLY 2 (LIMIT)
+- Works same/cross-region and same/cross-account
+- Optional - Public Hostnames resolve to the private IPs for that instance
+- Same region Security Groups can be referenced by peer Security Groups
+- VPC peering is NOT transitive peering
+  - Peer A, B and C will need 3 peers - A->B, A->C, B->C
+- Routing configuration is needed
+  - Security Groups and NACLs can filter
+- Route tables at both sides of the peering connections are needed, directing traffic flow from the remote CIDR at the peer gateway object
+- VPC Peering connections CANNOT be created where there is overlap in the VPC CIDRs
+  - Ideally NEVER use the same address ranges in multiple VPCs
+- VPC Peering communication is encrypted and transits over the AWS Global Network - Fast data transfer
