@@ -3283,3 +3283,242 @@ How an example works:
 - VPC Peering connections CANNOT be created where there is overlap in the VPC CIDRs
   - Ideally NEVER use the same address ranges in multiple VPCs
 - VPC Peering communication is encrypted and transits over the AWS Global Network - Fast data transfer
+
+### Hybrid Environments and Migration 
+>Video 1
+#### Border Gateway Protocol (BGP)
+- BGP is a routing protocol
+  - How a router figures out what the optimized path is
+  - A router will exchange a table with the destinations it knows about and the associated ASPATH with that network
+    - ASPATH - The fastest path
+    - ASPATH will outline what ASN numbers are associated with the paths
+      - ASN is the unique number assigned to the specific router network
+  - By Default BGP uses the shortest path to the target
+- Made up of Autonomous Systems (AS)
+  - Routers controlled by 1 entity
+  - AS is a network in BGP
+- ASN - Unique and allocated by IANA (0-65534), 64512-65534 are private
+- BGP operates over tcp/179 - its reliable
+- BGP is NOT automatic, peering is a manual configuration
+- BGP is a path-vector protocol 
+  - It exchanges the best path to a destination between peers
+- iBGP
+  - Internal BGP - Routing WITHIN an AS
+- eBGP
+  - External BGP - Routing BETWEEN AS's
+- A BGP does not take into account performance, it looks for the shortest length
+  - AS Path Prepending - Can be used to artificially extend the path between source to destination by adding "dummy AS'"
+
+>Video 2
+#### IPSEC VPN Fundamentals
+- IPSEC is a group of protocols that sets up secure tunnels (IPSec Tunnels) across insecure networks
+- Connects between 2 peers (local and remove)
+- Provides 
+  - Authentication
+  - Encryption
+- Any data inside tunnels is encrypted 
+  - secure connection over an insecure network
+- NOTE:
+  - Symmetric Encryption is fast but its hard to exchange keys securely
+  - Asymmetric encryption is slow but with a public and private key, it can swap information without worrying about exchanging secret keys
+- IPSEC has 2 main phases
+  - IKE Phase 1 (Slow and heavy)
+    1) Authenticate - Pre-shared key (password) and certificate
+       - Certificate or pre-shared key is authenticated by each side
+    2) Using Asymmetric encryption to agree on and create a shared symmetric key
+       - Each side creates a DH private ke and derives a public key.
+       - The public keys are exchanged over the public internet
+       - Each side takes their private key and the remote peer's public key and independently generate an identical Diffie-Hellman Key (with math magic)
+       - Using the DH Key the peers exchange key material and agreements
+    3) IKE SA Created (Phase 1 tunnel)
+       - Each side generates a Symmetrical key using the DH Key and exchanged material
+  - IKE Phase 2 (Fast and Agile)
+    1) Use the keys agreed on in phase 1
+       - At this point both sides have a DH Key and symmetric private keys and an established security association (Phase 1 Tunnel), now we want to get the VPN up and running
+       - Symmetrical key is used to encrypt and decrypt agreements and pass more key material
+    2) Agree encryption method and the keys used for bulk data transfer
+       - The best shared encryption and integrity methods are communicated and agreed upon
+       - DH Key and Exchanged Key Material are used to create a symmetrical IPSEC Key
+       - IPSEC Key is used for bulk encryption and decryption of interesting traffic
+    3) Create IPSEC SA (Phase 2 Tunnel, architecturally running over phase 1)
+
+#### Policy based VPNs vs Route-Based VPNs
+- Policy Based VPNs
+  - Rule sets match traffic 
+    - a Pair of Security Associations
+  - Different rules/security settings
+- Route Based VPNs
+  - Target matching (prefix)
+  - Matches a single pair of Security Associations
+
+#### Policy Based VPN
+- You can run many Phase 2 tunnels on top of phase 1 tunnels, as each policy has a Security Association pair and unique IPSEC Keys for each
+- Harder to set up
+
+#### Route-Based VPNs
+- You can only run 1 Phase 2 tunnel on top of the phase 1 tunnel, has a single Security Association pair and a single IPSEC Keys
+- Easier to set up
+
+>Video 3
+#### AWS Site-to-Site VPN
+- A logical connection between a VPC and on-premises network encrypted using IPSec, running over the private internet
+- Fully Highly Available - if you design and implement it correctly
+- Quick to provision (Less than 1 hour)
+- Create a Virtual Private Gateway (VGW)
+  - What you target on a route table, what you associate with in your VPC
+  - The VPG has multiple endpoints in the AWS public zone that allow connections
+- Create a Customer Gateway
+  - A logical configuration in AWS or a physical device the logical configuration represents
+  - Configure the CGW with the VPG IP address so it can connect with the VGW
+- VPN Connection between VGW and CGW is the VPN
+  - Require the Customer Gateway Router IP and associate it with the Virtual Private Gateway
+  - Create a VPN connection that the endpoints use which tunnel to the CGW
+- Note that the single point of failure is the CGW (the customer gateway)
+  - To resolve this, you can add another on-premises CGW at another IP address
+  - You would need to add another IP connection from the VGW to the new CGW
+    - Note: This creates new VPC endpoints that will connect to the CGW and allow for failure of the CGW
+
+#### Static vs Dynamic VPN (Uses BGP)
+- Static VPN
+  - Static routes are added to the route tables
+  - Networks for remote side statically configured on the VPN connection
+  - No load balancing and multi connection failover
+- Dynamic VPN
+  - Boarder Gateway Protocol (BGP) is configured on both the customer and AWS side using (ASN). Networks are exchanged via BGP
+  - Multiple VPN connections provide HA and traffic distribution
+  - Routes for remote side added to route tables as static routes
+    - Route propagation (if enabled) means routes are added to Route Tables automatically
+
+#### VPN Key Considerations
+- VPNs have Speed Limitations - 1.25Gbps
+- VPN latency considerations - Works over public internet, can be inconsistent
+- Cost 
+  - AWS Hourly cost
+  - GB out cost
+  - Data cap (on premises)
+- Speed of setup - hours (entire thing is software configuration)
+- Can be used as a backup for Direct Connect (DX)
+- Can be used at the same time/with Direct Connect (DX)
+
+>Video 4
+#### AWS Direct Connect (DX)
+- A physical connection (1, 10 or 100Gbps)
+- Business premises -> DX Location -> AWS Region
+- You order Port Allocation at a DX Location
+  - You need to arrange physical connections to the DX Location and your physical server location
+- Port Hourly Cost and Outbound Data Transfer
+- Provisioning time - Physical cables and no resilience 
+- Low and consistent latency + high speeds (physical connections or server connections)
+- Can be used to access AWS Private Services (VPCs) and AWS Public Services - Without internet
+- DX Locations are typically not owned by AWS
+  - It is typically a large regional data center where AWS have space and equipment rented
+  - You might also have customer or comms partner cages, which the customer or Partner DX Router is located
+    - If you do not have optional infrastructure at the DX location, you can use a partners location to connect to
+  - You cross connect AWS port to Customer/Partner Port Link at the DX location, which then connects to your on site server
+
+>Video 5
+#### Direct Connect Resilience
+- AWS to DX location is assumed to be highly available. It has redundant high speed connections
+- By default, a single cross-connect links a DX port with a customer or provider router in the data center
+  - Using multiple AWS DX routers and customer DX routers, you can provision multiple DX cross-connect links
+- A DX is extended from the DX location (customer or provider DX router) to a customer premises
+  - Using multiple customer DX routers, you can provision multiple connections (make sure different independent cables) to multiple customer premises routers (in different buildings, need redundancies all the way through)
+
+>Video 6
+#### AWS Transit Gateway (TGW) 
+- Network Transit Hub - To connect VPCs to on premises networks
+  - Significantly reduces network complexity
+  - Single network object - Highly Available and Scalable
+- Attachments to other network types
+  - VPC, Site-to-Site VPN and Direct Connect Gateway
+- For example:
+  - Having multiple VPCs and a customer connections, you would need
+    - peer-to-peer connections for EACH VPC (many)
+    - Customer Gate Way connections for each VPC
+      - Might want 2+ Customer Gatewats, which means more connections
+    - Scales poorly
+  - A transit gateway uses a side-side gateway router
+    - Instead of the VPC connecting to the CGW, the Transit Gateway is used as the attachment that connects the VPCs to the Customer Gateways
+    - Allows you to remove Peer-to-Peer connections as the Transit Gateways can be used instead
+    - Can be used to peer Transit Gateways to other Transit Gateways (provides global connectivity)
+    - Can connect to Direct Connect Gateway (to on premises networks)
+
+#### Exam Power Ups
+- Transit Gateways Support transitive routing
+  - Compare with Peer-to-Peer connect
+- Can be used for global networks
+- Share between aaccounts using AWS RAM
+- Peer with different regions
+  - Same or cross account
+- Less complex networks can be done with Transit Gateways
+
+>Video 7
+#### Storage Gateway - Volume
+- Runs as a Virtual Machine (or hardware appliance)
+  - Acts as a bridge between storage that is on premises and in AWS
+- Presents storage using iSCSI(local storage), NFS (Linux) or SMB (Windows)
+- Integrates with EBS, S3 and Glacier within AWS
+- Used for:
+  - Migrations
+  - Extensions
+  - Storage Tiering
+  - DR
+  - Replacement of Backup Systems
+- For the exam, you need to pick the right mode
+
+#### In general - In Volume Storage Mode <- Backups, DR or Migration
+- Data is stored locally
+- AWS is used to copy volumes into S3 (uses S3 for backups)
+- Servers run with local disks
+  - Interact with Network Attached Storage using iSCSI as Raw Block Devices
+- Storage Gateway is run on a VM and connects to Servers W/Local disks
+  - #### In Volume Storage Mode: Storage Gateway has local storage that stores data locally
+  - Uses an upload buffer (local storage in VM) 
+  - Uses the local storage to push data to the Storage Gateway Endpoint in AWS
+    - Local storage has snapshots taken and snapshots are stored in EBS Snapshots
+    - EBS Snapshots can then be provisioned into EBS Volumes
+- Great for "Full Disk" backup of servers
+- Assists with disaster recovery
+  - Creates EBS Volumes in AWS
+- DOES NOT IMPROVE DATACENTER CAPACITY
+  - Main copy of data is stored on the gateway
+
+#### In general - In Volume Cached Mode <- Database Extension
+- Data is stored in AWS
+- Cache is stored on-premises
+- Servers run with local disks
+    - Interact with Network Attached Storage using iSCSI as Raw Block Devices
+- Storage Gateway is run on a VM and connects to Servers W/Local disks
+    - #### In Volume Cached Mode: Storage Gateway has local cache. ALL PRIMARY DATA IS STORED IN S3
+    - Primary storage in S3 is AWS Managed
+      - The only data stored locally is cached data - data that is accessed frequently
+    - In this case, AWS Storage appears to be on-premises but it is actually in AWS
+      - You can use AWS for database extension architecture 
+
+>Video 8
+#### Storage Gateway - Tape - VTL Mode
+- Uses virtual tape drives that use S3 run in a way that appears like tapes to migrate a tape library into AWS
+  - Presents a media changer and tape drive as if it is a physical tape system
+  - The Virtual Tape Library (VTL) uses S3 and acts as the tape library
+  - The Tape Shelf (VTS) stored in Glacier
+- Storage Gateway in VTL mode has an upload buffer and local cache that it uses to upload to the VTL and VTS 
+
+>Video 9
+#### Storage Gateway - File Mode
+- Bridges on-premises file storage and S3
+- Require Mount Points (shares) available via NFS or SMB
+  - Maps directly into S3 bucket
+  - Files stored into a mount point, they are visible as objects in an S3 bucket
+- Read and write caching ensure LAN-like performance
+- File Gateway runs in on-premises and saves files in on-premises file-shares
+  - Buckets are linked to the file-share (maps between the file name and the bucket name)
+    - This is how you can build flat object storage from a file-storage system
+  - Primary data is held in S3
+    - You can integrate AWS services into the S3 storage
+  - 10 bucket shares per file gateway
+- Capable of building unique hybrid-architecture 
+  - You can have multiple on-premises locations running File-gateway and it can share the same S3 buckets
+    - You can use "NotifyWhenUploaded" API to notify other gateways when objects are changed (it does not propogate to different fileshares automatically)
+    - Object lock is not supported - Use read only mode on other shares or tightly control file access for security
+  - You can create multiple buckets in various regions to replicate the fileshare S3 bucket and impliment cross-region replication
+  - You can configure lifecycle moves in S3 to move files into various object storage classes to automatically move files to save costs
