@@ -4374,3 +4374,21 @@ How an example works:
 - Containers - Docker containers deployed to ML EC2 instances - ML environments (OS, Libraries, Tooling)
 - Hosting - Deploy endpoints for your models
 - Sagemaker has no cost, but the resources to create models do (complex pricing)
+
+### AWS Local Zones
+- Infrastructure is located in AZs in a region. This region has instances running in infrastructure that is not necessarily in a close geographical area
+- Local zones can be found in the name, for example, us-west-2a vs us-west-2-las-1 with us-west-2-lax-1a or us-west-2-lax-1b
+- Local zones are created by expanding the VPC to include local zones 
+- Local zones support DX
+- Connections to local zone resources offer really low latency 
+- Some thing in local zones behave like parent region resources (ex EBS Snapshots will appear in the parent region AZ)
+
+#### Key Points
+- 1 Zone - No built in resilience
+  - Think of them like an AZ, but near your location
+- They are physically close to you, latency is lower
+- Not all products support local zones
+  - Many operate with limitations
+- DX to a local zone IS supported (extreme performance)
+- Utilizes parent regions for some services (ex. EBS Snapshots will go TO parent region)
+- Use when you need the HIGHEST performance
