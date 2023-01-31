@@ -3734,3 +3734,350 @@ How an example works:
 - Used if you need to access S3/EFS, but with existing protocols
 - Used if iIntegrating with existing workflows
 - Used if using MFTW (Managed File Transfer Workflow feature) to create new ones
+
+### Security, Deployment and Operations
+>Video 1
+#### AWS Secrets Manager
+- It does share functionality with parameter store
+- Designed specifically for secrets (Passwords, API Keys, etc)
+  - Usable via console, CLI, API or SDK's 
+    - Integrates with applications
+  - Supports automatic rotation
+    - This uses Lambda
+  - Directly integrates with some AWS Products
+    - RDS
+- Between Parameter store vs Secret Manager
+  - Secret manager is specifically for secrets 
+  - Parameter is used for storing string and CAN store secrets
+  - The main difference is Secret Manager can integrate Lambda functions
+    - Lambda can be used to update passwords automatically
+    - Lambda can be used to rotate secrets and sync the new passwords with products such as RDS
+- Secrets are encrypted with KMS
+
+>Video 2
+#### Application (Layer 7) Firewalls
+- Normal Firewall (Layer 3,4)
+  - Firewall sees packets, segments, IPs and ports
+    - Sees 2 way flow of information
+      - Request and response
+- Normal Firewall (Layer 3,4 and 5)
+  - Capability for request and response to be considered as part of a session 
+    - Reduces admin overhead and allows for more contextual security
+- Layer 7 Firewall
+  - Capable of seeing content contained in the packets
+  - Understand layer 7 protocols (HTTP) 
+    - Headers, DNS, RATE, Content etc...
+  - Encryption HTTPS terminated (decrypted) on the layer 7 firewall
+  - New encryption Layer 7 connection between the Firewall and the back end
+  - Data at L7 can be inspected and blocked, replaced or tagged (adult, spam, off topic, etc.)
+  - Layer 7 Firewalls can identify normal or abnormal requests
+    - Protocol specific attacks
+  - Able to identify, block and adjust applications (ex. Facebook)
+  - Layer 7 Firewall keeps all Layer 3,4 and 5 features but adds functionality
+
+>Video 3
+#### Web Application Firewall (WAF)
+- Protects web applications 
+  - CloudFront, Application Load Balancer, AppSync, API Gateway
+- Configured in the Web ACL
+  - Use Rules within Rule Groups (within WEB ACL)
+  - You can manually update Rules
+  - You can use EventBridge and Lambda to update rules (ex. IP list parser)
+- Example WAF Architecture (Firewall loop)
+  - WAF can output logs to S3 every 5 min
+  - CloudWatch Logs can read and feed into Firehose, which enters another bucket
+  - Lambda event driven processing of logs or event subscription
+  - Trigger Lambda updates to the WEB ACL
+
+#### WEBACL
+- WEBACL Default Action (Allow or Block) - Non matching
+- Resource Type - CloudFront or Regional Service
+  - Protects API, API GW, AppSync... pick a region
+- Add Rule Groups or Rules
+  - Rules are processed in order
+  - Rules are processed using WCU
+    - Web ACL Capacity Units (WCU) - Default to 1500
+      - Can be increased with a support ticket
+    - WEBACLs are associated with resources (this takes time)
+      - Adjusting a WEBACL takes less time than associating one
+    - Only 1 WEBACL can be attached to a resource, but many resources can use a WEBACL
+
+#### Rule Groups
+- Rule Groups contain rules
+- Rule Groups DO NOT have default actions, that is defined when groups or rules are added to the WEBACLs
+  - Managed (AWS or Marketplace), yours, Service Owned (ex. Shield and Firewall Manager)
+- Rule Groups can be referenced by multiple WEBACL
+- Have a WCU capacity (defined upfront with the 1500 capacity)
+
+#### WAF Rules
+- Rules:
+  - Type
+    - Regular 
+      - Designed to match if something occurs
+    - Rate-Based
+      - Designed to match if something occurs at a defined rate
+  - Statement
+    - What to match (Regular)
+    - Count all (Rate-Based)
+    - What and Count (Rate-Based)
+      - Statements can check Origin country, IP, Label, Header, Cookies, Query Parameters, URI Paths, Query String, Body (first 8192 bytes ONLY), HTTP Method
+      - Matches
+        - Single
+        - And
+        - Or
+        - Not
+  - Action 
+    - Allow
+      - Regular only
+    - Block
+      - Stops process
+    - Count
+      - Allows process to continue
+    - Captcha
+      - Allows process to continue
+    - Extra additions on actions
+      - Custom Response (x-amzn-waf-...)
+        - Used to handle something and you know its from WAF
+      - Label
+        - How to handle something, WAF will NOT handle the request, something else does (follow-up rules)
+        - Does not stop processing at the WEBACL
+
+#### Pricing
+- WEBACL - Monthly $5/Month (these can be reused)
+- Rule on WEBACL - Monthly $1/Month
+- Request per WEBACL - Monthly ($0.60/1 Million requests)
+- Intelligent Threat Mitigation
+- Bot Control - ($10/Month) and ($1/1 Million requests)
+- Captcha - ($0.40/1000 challenge attempts)
+- Fraud Control/Account Takeover - ($10/Month and $1/1000 login attempts)
+- Marketplace Rule Groups - Extra
+
+>Video 4
+#### AWS Shield
+- Provide protection against DDOS
+- AWS Shield Standard
+  - Free
+- AWS Shield Advanced
+  - Cost
+- Network Volumetric Attacks (L3) - Saturate Capacity
+  - Volume attack
+- Network Protocol Attacks (L4) - TCP SYN Flood
+  - Leave Connections open, prevent new ones
+  - L3 and L4 attacks CAN be combined 
+- Application Layer Attacks (L7) 
+  - Web request floods
+    - ex. query.php?search=all_the_things
+
+#### AWS Shield Standard
+- Free for AWS customers
+- Protection at the perimeter
+  - region/VPC or the AWS edge
+- Common Network (L3) or Transport layer (L4) attack protection
+- Best protection using R34, CloudFront, AWS Global Accelerator
+
+#### AWS Shield Advanced
+- $3000 per month per organization, 1 year lock-in + data (OUT)/Month
+- Protects CloudFront, R53, Global Accelerator, Anything associated with EIPs (ex. EC2), ALBs, CLBs, NLBs
+- Not automatic - Must be explicitly enabled in Shield Advanced or AWS Firewall Manager Shield Advanced Policy
+- Cost protection (ex. EC2 scaling) for unmitigated attacks
+- Proactive engagement and AWS Shield response team (SRT)
+- WAF Integration - includes basic AWD WAF fees for web ACLs, rules and web requests
+- Application Layer (L7) DDOS protection (uses WAD)
+- Real time visibility of DDOS events and attacks
+- Health-based detection - application specific health checks, used by the Proactive Engagement Team
+- Protection groups
+
+>Video 5
+#### CloudHSM
+- An appliance that handles Keys, similar to KMS
+- KMS is
+  - A Key Management Service
+  - It is operated by AWS (Shared service)
+    - This can be a problem for security
+    - AWS does have access to the keys
+- CloudHSM are physical devices that are deployed in a AWS CloudHSM VPC associated with your AZ and injected into the AZ you use in a VPC (works in clusters)
+- HSMs keep keys and policies in sync when nodes are added or removed
+- AWS Provision HSM but have no access to where the security materials are located (can only update the devices themselves)
+    
+#### Exam Power Up
+- HSM is a Hardware Security Module
+- CloudHSM is a True Single Tenant Hardware Security Module (HSM)
+- AWS provisioned ONLY
+  - The customer fully manages the HSM
+- #### CloudHSM is Fully FIPS 140-2 Level 3 (KMS is L2 Overall, some L3)
+- CloudHSM is not accessible with IAM
+  - Cloud HSM is accessible with Industry Standard APIs
+    - PKCS#11, Java Cryptography Extensions (JCE), Microsoft CryptoNG (CNG) Libraries
+  - KMS can use CloudHSM as a custom key store. CloudHSM integrates with KMS
+
+#### CloudHSM Use Cases
+- No native AWS integration 
+  - ex. No S3 SSE
+- Offload the SSL/TLS processing for Web Services (cryptographically done in HSM, whereas KMS does it in the instance)
+- Enable Transparent Data Encryption (TDE) for Oracle Databases (Oracle encryption into the database itself by the engine)
+- Protect the private keys for an issuing certificate authority (CA)
+- Anything that uses industry standard key access methods or requires high levels of security, use CloudHSM
+
+>Video 6
+#### AWS Config
+- 2 Main jobs
+  1) Record configuration changes over time on resources
+     - Every time a resource is updated, the pre change and post change information is logged
+  2) Auditing of changes, compliance with standards
+     - It does NOT prevent the configuration changes from happening, there is NO protection. It just tracks
+- Regional service
+  - Supports cross-region and account aggregation
+- Changes can generate SNS notifications and near-realtime events via EventBridge and Lambda
+  - Can use EventBridge and Lambda to fix config changed automatically
+- Requires you to enable the product, which stores configuration changes (Configuration Item, CI) into a config bucket
+- Resources are evaluated against Config Rules - either AWS managed or custom (using Lambda)
+
+>Video 7
+#### Amazon Macie <- S3 Product
+- A Data Security and DAta Privacy Service for S3
+- Discover, Monitor and Protect data 
+- Automated discovery of data
+  - ex. Private Identifiable Information, Finance, Private Health Information, etc.
+- Managed Data Identifiers - Built-in - ML/Patterns
+- Custom Data Identifiers - Proprietary - Regex Based
+- Integrations - With Security Hub and "finding events" to EventBridge
+- Centrally Managed
+  - Can be managed via AWS Org or one Macie account inviting another
+- Schedule Discovery Jobs, which Amazon Macie uses along with data identifiers (mnanaged or custom) to detect and classify data in S3.
+  - Finding events can then be delivered to integrations
+
+#### Amazon Macie - Identifiers
+- Managed Data Identifiers - Maintained by AWS
+  - AWS provided list of common sensitive data types that Maice can use out of the box
+    - Growing list of common sensitive data types, such as credentials, finances, health, personal data
+- Custom Data Identifiers - Created by you
+  - Regex - defines a pattern to match in data (ex. [A-Z]-\d{8})
+  - Maximum Match Distance - how close keywords are to regex patterns
+  - Ignore Words - If regex match contains ignore words, ignore
+
+#### Amazon Macie - Findings
+- Produce 2 types of findings
+  1) Policy Findings
+     - A finding that reduces the security of a bucket after Macie is enabled (ex. changing permissions for public access after Macie is enabled)
+  2) Sensitive Data Findings
+     - Something triggered when an Identifier shown above is matched
+
+>Video 8
+#### Amazon Inspector - EC2 Instances, Containers and OS
+- Scans EC2 Instances and instance OOS
+- Scans Containers
+- Finds vulnerabilities and deviations against best practices
+  - Lengths - 15 min, 1 hour, 8/12 hours or 1 day
+- Provides report of findings ordered by priority
+- Network Assessment (Agentless)
+- Network and Host Assessment (Agent)
+- Rules packages determine what is checked
+- Network Reachability (no agent required)
+  - Agents can provide additional OS visibility
+  - Check reachability end-to-end. EC2, ALB, DX, ELB, ENU, IGW, ACLs, RTs, SGs, Subnets, VPCs, VGWs and VPC Peering
+  - RecognizePortWithListener, RecognizePortNoListener, RecognizePortNoAgent
+  - UnrecognizedPortWithListener
+- Packages (Host assessments, Agent Required)
+  - Common vulnerabilities and exposures (CVE)
+  - Center for Internet Security (CIS) Benchmarks
+  - Security Best Practices for Amazon Inspector
+
+>Video 9
+#### Amazon Guard Duty - AWS Account Security
+- Continuous security monitoring service
+- Analyses supported data sources 
+- Uses AI/ML plus threat intelligence feeds
+- Identifies unexpected and unauthorized activity as it occurs on your account
+  - Notify or event-driven protection/remediation
+- Supports multiple accounts (Master and member accounts)
+
+### NoSQL Databases and DynamoDB
+>Video 1
+#### DynamoDB
+- DynamoDB
+  - NoSQL Public Database-as-a-Service (DBaaS) - Key/Value and Document Database
+    - No self-managed servers or infrastructure
+  - Scaling options
+    - Manual/Automatic procisioned performance In/Out
+    - On-Demand
+  - Highly Resilient
+    - Across AZs and optionally Globally
+  - Really really fast, SSD Based (single digit millisecond)
+  - Backups, point-in-time recover, encryption at rest
+  - Event-driven integration (Events when data changes)
+- A Table is a grouping of Items with the same Primary Key
+  - A table can have an infinate number of items in it
+  - A Primary Key can be 2 types
+    1) Simple (Partition)
+    2) Composite (Partition and Sort mix) - Primary Key
+  - Each item MUST have a unique value for the Primary Key and Sort Key
+    - Can have non, all, mixture or different attributes (DDB has no rigid attribute schema)
+    - Item max size - 400KB
+  - Capacity (speed) is set on a table
+    - Writes - 1 WCU = 1KB/s
+    - Reads - 1RCU = 4KB/s
+- On-Demand Backups
+  - Full copy of a table is retained until removed
+  - Can be restored in the same or different region
+    - With or without indexes
+    - Adjust encryption settings
+- Point-in-time recovery (PITR)
+  - Not enabled by default
+  - Continuous record of changes allows replay to any point in the window (35 day recovery window)
+  - 1 second granularity
+
+#### Exam Power Ups
+- NoSQL <- Preference DynamoDB in the exam
+- Relational Data <- Generally NOT DynamoDB
+- Key/Value <- Preference DynbamDb in the exam
+- Access via console, CLI, API <- "NoSQL"
+  - True SQL is not supported, only "SQL-Like" queries
+- Billed based RCU, WCU, Storage and Features
+
+>Video 2 and 3
+#### DynamoDB Operations, Consistency and Performance
+#### Reading and Writing
+- Types: 
+  - On-Demand
+    - Unknown load, unpredictable, low admin
+    - Price per million Read and Write units
+  - Provisioned
+    - Read Capacity Unit (RCU) and Write Capacity Units (WCU) based on a table
+    - Every operation consumes AT LEAST 1 RCU/WCU
+    - 1 RCU is 1x4KB read operation per second
+    - 1 WCU is 1x1KB write operation per second
+    - Every table has a RCU and WCU burst pool (300 seconds)
+#### Query and Scan
+- Query
+  - Query accepts a single Partition Key value and optionally a Sort Key or range
+  - Capacity consumed is the size of ALL RETURNED ITEMS. 
+    - Further filtering discards data, CAPACITY IS STILL CONSUMED
+  - Can ONLY query on PK or PK and SK combo
+- Scan
+  - Most flexible and also most inefficient 
+  - Scan moves through a table consuming the capacity of EVERY ITEM. 
+    - You have complete control on what data is selected, any attributes can be used and any filters applied
+    - SCAN consumes capacity for EVERY ITEM it scans through
+#### Consistency Model
+- How DynamoDB is either eventually consistent or strongly consistent
+- DynamoDB saves data into separate nodes
+  - Leader (storage) Node
+    - DynamoDB directs the write at the leader storage node, which is elected from the 3 storage nodes
+    - The Leader node replicated data to the other nodes, typically finishing within a few milliseconds
+  - Storage Node
+    - Data is pushed from the leader node to storage nodes
+- Strongly Consistent Reads
+  - Connects to the leader node to get the most up-to-date copy of the data
+  - Use the leader node if you cannot tolerate data being slightly out of sync
+- Eventually Consistent Reads
+  - DynamoDB directs the user to one of the nodes. Since you could have a potential to have old reads (before the data is propagated) this is eventually consistent
+  - 50% of the cost vs strongly consistent
+#### WCU Calculation
+- If you need to store 10 items per second, with a 2.5K average size per item
+  - Calculate WCU per item and round up (Item Size/1KB)
+  - Multiply by average number of seconds
+#### RCU Calculation
+- If you need to store 10 items per second, with a 2.5K average size per item
+    - Calculate WCU per item and round up (Item Size/4KB)
+    - Multiply by average number of seconds
+      - Note: Eventually consistent reads are 50% of strongly consistent reads, so half the cost of Strongly consistent read costs
