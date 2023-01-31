@@ -4276,3 +4276,101 @@ How an example works:
   - Manual snaps taken at any time (require manual delete)
 - Can move data backups to other AZs
 - You can configure snapshots to be copied to another region for data recovery with a separate configuration retention period
+
+### Machine Learning
+#### Amazon Comprehend - NLP tool
+- Natural Language Processing
+- Input: Document (text)
+- Output: Entities, Phrases, Language, PII, Sentiments
+- Pre-trained models or custom
+- Real-time analysis for small workloads
+- Async jobs for large workloads
+- Console and CLI - Interactive or use APIs to build into apps
+#### Amazon Kendra - Intelligent search service (delivering data to a user)
+- Designed to mimic interacting with a human
+- Supports various question types
+  - Factoid (who, what, where)
+  - Descriptive
+  - Keyword - Kendra helps determine intent
+- Kendra connects with your back end to deliver data
+- Index - Searchable data organized in an efficient way
+- Data Source - Where your data lives, Kendra connects and indexes from the location
+  - Can be S3, Confulence, Google Workspace, etc.
+- Synchronizes with index based on schedule
+- Documents - Structured (FAQs), unstructured (HTML, PDFs, etc)
+- Integrates with AWS services (IAM, Identity Center, etc.)
+#### Amazon Lex - Interactive Chat Bot Creation (think Alexa, powers Alexa)
+- Text or Voice conversational interfaces
+- Powers Alexa
+- Automatic Speech Recognition (ASR) - Speech to text
+- Natural Language Understanding (NLU) - Intent
+- Build understanding into your application
+- Scales, Integrates, Quick to deploy, Pay as you go pricing
+- Bots, Voice assistants, Q&A, etc.
+  - Interact with Bots in 1+ languages
+- Lex is something you are going to develop into an application
+#### Amazon Polly - Converts text to "life-like" speech
+- Takes text in a single language and outputs speech in the same languge 
+  - NO TRANSLATIONS
+- Allows for control of HOW speech should be generated with Speech Synthesis Markup Language
+  - Stuff like emphasis, pronounciation, etc.
+#### Amazon Rekognition - Deep learning image and video analysis
+- Identify objects, people, text, activities, content moderation, face detection, face analysis, face comparison, pathing and more
+- Per image or per minute pricing
+- Integrates with application and event-driven
+- Can analyze live video streams 
+  - with Kinesis Video Streams
+#### Amazon Textract - Detect and analyze tect contained in an input document
+- Input - JPEG, PNG, PDF or TIFF
+- Output - Extracted text, structure and analysis
+- Most documents - Synchronous 
+- Large Documents - Asynchronous
+- Pay per use
+- Use Cases
+  - Detection of text and relationship between text
+  - Generates metadata
+  - Document analysis or Receipt analysis or Identity documents
+#### Amazon Transcribe - Automnatic Speech Recognition (ASR) and output texts
+- Inout - Audio
+- Output - Text
+- Language customization, Filters for privacy, Audience appropriate language, Speaker identification
+- Custom vocabularies and language models
+- Pay per second
+- Use Cases:
+  - Full text indxing of audio - allow searching
+  - Meeting notes
+  - Subtitles/captions and transcripts
+  - Call analytics 
+  - Integration with other apps/AWS ML services
+#### Amazon Translate - Translates text (ML based)
+- Translates text from native language to another language
+- Encoder reads source and semantic representation (meaning) is gathered, and the decoder reads the meaning and writes to the target language
+- Use Cases:
+  - Multilingual user experience
+  - Meeting notes, posts, communications, articles
+  - Emails, in game chat, customer support
+  - Translate incoming data
+  - Language independence for other AWS services
+    - Comprehend, transcribe, polly, data stored in S3, RDS, DDB
+  - Commonly integrates with other services/Apps/Platforms
+#### Amazon Forecast 101 - Forecasting time-series data
+- Examples: Retail demand, supply chain, staffing, traffic, etc.
+- Import historical and related data
+  - Creates relationships between the data
+- Output - Forecast and forecast explain-ability
+- Web console (visualization), CLI, APIs, Python SDK
+#### Amazon Fraud Detector - Fully managed Fraud Detection service
+- Imports data and detects fraudulent behavior on activity
+- Upload historic data, choose model type
+  - Online fraud - little historic data (ex. new account)
+  - Transaction fraud - Transaction history, identifying suspect payments
+  - Account takeover - Identifying phishing or another social based attack
+  - Things are scored and Rule/Decision logic allows you to react to a score based on business activity
+#### Amazon Sage Maker - AI and ML model tool
+- Fully managed machine learning (ML) service
+- Fetch, clean, prepare, train, evaluate, deploy, monitor/collect
+- Sage Maker Studio - Build, train, debug and monitor models - IDE for ML lifecycle
+- Sagemaker Domain - EFS Volume, Users, Apps, Policies, VPCs, ... isolation
+- Containers - Docker containers deployed to ML EC2 instances - ML environments (OS, Libraries, Tooling)
+- Hosting - Deploy endpoints for your models
+- Sagemaker has no cost, but the resources to create models do (complex pricing)
