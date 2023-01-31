@@ -4081,3 +4081,198 @@ How an example works:
     - Calculate WCU per item and round up (Item Size/4KB)
     - Multiply by average number of seconds
       - Note: Eventually consistent reads are 50% of strongly consistent reads, so half the cost of Strongly consistent read costs
+
+>Video 4
+#### DynamoDB Local and Global Secondary Indexes
+- Indexes in DybamoDB
+  - Query is the most efficient operation in DDB
+  - Query can only work on 1 PK Value at a time
+    - And optionally a single, or range of SK values
+  - Indexes are alternative views on table data
+    - Local Secondary Index use a different SK (LSI) 
+    - Global Secondary Indexes use a Different PK and SK (GSI)
+  - Ability on indexes to choose some or all of the base table attributes (projections)
+- Local Secondary Indexes is an alternative view of a table - Think of like attached to main cluster/leader
+  - LSI MUST be created with a table
+  - 5 LSI's per base table
+  - Alternative SK on the table
+  - Shares the RCU and WCU with the table
+  - Attributes - ALL, KEYS_ONLY and INCLUDE
+  - LSI's are an alternative view on the base table data using the same PK and different SK
+  - Indexes are sparse, only items which have a value in the index alternative sort key are added to the index
+    - You can filter stuff to show up in the index
+- Global Secondary Indexes - Think of like a new read node
+  - Can be created at any time
+  - Default limit of 20 per base table
+  - Alternative PK and SK
+  - GSIs have their OWN RCU and WCU allocations
+  - Attributes - ALL, KEYS_ONLY and INCLUDE
+    - GIS's are an alternative view on the base table with alternative PK and SK. 
+    - They have their own RCU and WCU and can be created ay ANY TIME
+    - GSI's are sparce; Only Items which have values in the new PK and optional SK are added
+    - GSI's are ALWAYS eventually consistent, replication between base and GSI is Asynchronous
+#### LSI and GSI Considerations
+- Be careful with Projections (KEYS_ONLY, INCLUDE, ALL)
+  - You will use all the Capacity Units as you project
+  - Queries on attributes NOT projected are expensive
+- Use GSIs as default. LSI only use when STRONG CONSISTENCY is required
+- Use indexes for alternative access patterns (teams that need to access data but in a different perspective)
+
+>Video 5
+#### DynammoDB Streams and Triggers
+- Stream Concepts
+  - Stream: A Time ordered list of ITEM CHANGES in a table
+  - 24 Hour rolling window
+  - Enabled on a per table basis
+  - Records Inserts, Updates and Deletes
+  - Different view types influence what is in the stream
+- 4 View types a stream can be configured with
+  1) KEYS_ONLY
+     - Records Keys Only (PK and SK)
+  2) NEW_IMAGE
+     - Records Entire Image AFTER the change
+  3) ONLD_IMAGE
+     - Records Entire Image BEFORE the change
+  4) NEW_AND_OLD_IMAGES
+     - Records Entire Images, both the NEW and OLD Item (pre and post) <- can include blank if a new item is entered
+- Streams are the basis of triggers
+  - Triggers: Item changes generate an event
+    - Events contain the data which changed
+    - An action is taken using this data
+  - AWS can use Streams together with Lambda to take actions
+    - ex. Reporting and Analytics
+    - ex. Aggregation, Messaging or Notifications
+- Workflow
+  1) Item change occurs in a table with streams enabled
+  2) Stream Record is added into stream
+  3) Lambda function is invoked when stream event occurs. Function is passed the VIEW data as an event.
+
+>Video 6
+#### DynamoDB Global Tables
+- Global Tables:
+  - Provide Multi-master cross-region replication
+    - Tables are created in multiple regions and added to the same global table (becoming replica tables)
+  - Global tables use Last Writer Wins for conflict resolution
+  - Multi-master - Read and writes can occur in any regions
+    - Generally sub-second replication between regions
+    - Need to select regions where the global tables will be located
+  - Strongly consistent reads ONLY in the same region as writes
+  - Global eventual consistency
+  - Provides Global HA and Global DR/BC
+  - Application needs to be able to tolerate drawbacks
+
+>Video 7
+#### DynamoDB Accelerator (DAX)
+- Traditional Caches vs DAX
+  - Traditional Cache:
+    1) Application checks cache for data - A cache miss occurs when cache does not contain data
+    2) Data is loaded from database with a separate operation and SDK
+    3) Cache is updated with retrieved data. Subsequenmt queries will load data from cache as a cache hit
+  - DAX <- Dax stores cache in the cluster
+    1) Application uses DAX SDK and makes a single call for data which is returned by DAX
+    2) DAX either returns the data from it's cache or retrieves it from the Database and then acches it
+  - Using DAX removes complexity for the app developer and allows for tighter integration
+- How DAX Works
+  - DAX runs in an AZ in a VPC
+  - DAX replicates in Read Replicas in other AZ for HA
+  - The APP uses the DAX SDK to connect to the DAX cluster accessible via an endpoint. 
+    - Abstracts the cache and Database (DDB) away from the APP
+#### DAX Considerations
+- Primary NODE (writes) and Replicas (read)
+- Nodes are Highly Available - Primary failure will result in an election
+- In-memory cache - Scaling (Much faster reads, reduced costs)
+- Scales UP and Scales OUT (Bigger and more units)
+- Supports write-through
+- DAX is deployed WITHIN your VPC as a CLUSTER- NOT A PUBLIC SERVER
+- Your application MUST tolerate eventually consistent reads
+- Caching with DDB - Assume DAX
+
+>Video 8
+#### DynamoDB TTL (Time to Live)
+- Lets you define a timestamp for automatic delete of items in a table
+- When TTL is enabled on a table, a specific attribute is selected for TTL (uses UCT time)
+- A Per-partition process periodically runs, checking the current time (in seconds since epoch) to the value in the TTL attribute
+  - Items where the TTL attribute < current time, items are set to expired
+- Another per-partition background process scans for expired items and removes them from the table and indexes and delete is added to streams if enabled
+
+>Video 9
+#### Amazon Athena
+- Athena is:
+  - A serverless interactive querying service
+  - Ad-hoc queries on data
+    - You pay for data consumed
+  - Uses Schema-on-read - Table-like translations
+    - You can query non-database data
+  - Schema translates data into a relational-like when reading
+  - Original data NEVER changed - remains on S3
+  - Output can be sent to other services
+  - Tables are defined in advanced in a data catalog and data is projected through when read
+    - This allows SQL-like queries on data without transforming the source data
+#### When to use Athena
+- Queries where Loading/Transformation is NOT desired (in advanced)
+- Occasional/Ad-hoc queries on data in S3
+- Serverless querying scenarios - Cost conscious
+- Querying AWS logs - VPC Flow Logs, CloudTrail, ELB Logs, Cost Reports, etc.
+- AWS Glue Data Catalog and Web Server Logs
+  - With Athena Federated Query (other Data Sources)
+
+>Video 10
+#### ElastiCache <- Redis
+- In-memory databases (high performance) 
+- Options:
+  - Managed Redis (as a service)
+  - Managed Memcached (as a service)
+- Can be used to cache data - for Read Heavy workload with low latency requirements
+- Reduced database workloads (expensive)
+- Can be used to store session data (stateless servers)
+- Requires Application Changes
+
+#### Redis vs Memcached
+- Redis
+  - Supports Advanced Data Structures
+  - Multi-AZ
+  - Replication (Scale Reads)
+  - Supports Backup and Restore
+  - Transactions
+    - Better for consistency
+- Memcached
+  - Simple data structures
+  - No replication
+  - Multiple Nodes (Sharding)
+  - Does NOT support Backups
+  - Multi-threaded by design
+    - Better for performance
+
+>Video 11
+#### Amazon Redshift
+- Redshift Architecture
+  - Petabyte-scale Data Warehouse
+  - OLAP (Column based) and NOT OLTP (Row/transaction)
+  - Pay as you use (similar structure to RDS)
+  - 2 special features
+    1) Direct Query S3 using Redshift Spectrum
+       - Query S3 without loading into DB
+    2) Direct Query other DBs using Federated Query
+       - Query other DB without loading into DB
+  - Integrates with AWS tooling such as Quciksight
+  - SQL-like interface JDBC/ODBC connections
+- Server based (NOT Serverless)
+- Runs in One AZ in a VPC
+  - Uses a Cluster Architecture in the one AZ
+- Leader Node - Query input, planning and aggregation
+- Compute Node - Performing queries of data
+  - Nodes have slices that distribute compute and work together with the leader node
+- Has VPC Security, IAM permissions, KMS at rest Encryption, CloudWatch monitoring (like any VPC service)
+- Redshift Enhanced VPC Routing - VPC Networking (can use any VPC networking and services) - Need to enable
+- Can configure snapshots into S3
+- Can send snapshots to another AWS region
+- Can integrate with Firehose streams, DMS to migrate data into Redshift, Copy from DunamoDB, Load or unload from S3 or read from applications using JDBC/ODBC standard connections
+
+>Video 12
+#### Redshift Resilience and Recovery
+- Note: Redshift runs in one VPC in 1 Az, but there are ways to increase resilience 
+- Can utilize S3 for backups
+  - Automatic backups (every 8 hours) or 5GB of data and by default have a 1 day retention (up to 35 days)
+  - Manual snaps taken at any time (require manual delete)
+- Can move data backups to other AZs
+- You can configure snapshots to be copied to another region for data recovery with a separate configuration retention period
