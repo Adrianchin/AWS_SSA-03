@@ -3548,3 +3548,189 @@ How an example works:
   - A truck that allows for large data transfer
   - Single location where 10+PB is required
   - Store up to 100PB of storage per Snowmobile
+
+>Video 11
+#### AWS Directory Service
+- Directory (in general)
+  - Stores objects (ex. Users, Groups, Computers, Servers, File Shares) with a Structure (domain/tree)
+  - Multiple trees can be grouped into a forest
+  - Commonly used  in Windows Environments
+  - Sign in to multiple devices with the same username/password provides centralized management for assets
+  - Microsoft Active Directory Domain Services (AD DS)
+    - AD DS Most Popular
+    - Open source Alternative (SAMBA)
+- AWS Directory Service
+  - AWS Managed implementation of AD DS
+  - Runs within a VPC
+  - To implement High Availability, you will need to deploy AW DS into multiple AZ
+  - Some AWS Services REQUIRE a directory (ex. Amazon Workspace)
+  - AWS Managed can be isolated 
+  - or integrated with existing on-premises systems
+  - or act as a proxy back to on-premises
+- #### Simple AD Mode
+  - Standalone directory which uses Samba 4
+  - Support up to 500 users for small and 5000 users for large
+  - Integrates with AWS services
+    - EC2 intances can join SimpleAD and Workspaces can use it for logins and management
+    - Not designed to integrate with any existing on-premises directory systems such as Microsoft AD
+- #### AWS Managed Microsoft AD
+  - Amazon Workspaces can connect with Microsoft AF Mode, which connects to on-premises directory systems
+    - Primary running location is in AWS
+      - Trust relationships can be created between AWS and on-premises directory services
+      - Resilient if the VPN Fails
+        - Services in AWS will still be able to access the local directory running in Microsoft Directory Service
+    - Supports applications which require Microsoft Active Directory 
+      - Simple schema or schema updates
+- #### AD Connector
+  - If you had 1 product that requires Active directory, but you don't want to set up an entire Microsoft Directory on AWS
+    - You can use AD Connector to VPN to point back to your on-premises directory
+  - Primary directory is located on-premises
+  - If private connectivity fails, the AD Proxy will NOT function
+    - inturruption of services
+
+#### When to use which Mode
+- Simple AD
+  - The default. Simple requirements. A directory in AWS
+- Microsoft AD 
+  - Applications in AWS which need MS AD DS, or you need to Trust AD DS
+  - Note: This is a full on Microsoft AD in AWS, exists on AWS
+- AD Connect 
+  - Use AWS Services which needs a directory WITHOUT storing any directory info in the cloud
+  - Proxy your on-premises directory
+  - Note: Directory runs on-premises and NOT in AWS
+
+>Video 12
+#### AWS DataSync
+- Data Transfer Service INTO and OUT OF AWS
+  - Service that manages data migrations from end-to-end
+- Migrations, Data Processing Transfers, Archival/Cost Effective Storage or DR/BC
+- This project is designed to work at Huge scale
+- Keeps Metadata (ex. Permissions, Timestampes)
+- Built in data validation
+- Features
+  - Scalable - 10Gbps per agent (~100 TB per day)
+  - Bandwidth Limiters (avoid link saturation)
+  - Incremental and scheduled transfer options
+  - Compression and encryption
+  - Automatic recovery from transit errors
+  - AWS Service integration 
+    - S3, EFS, FSx
+  - Pay as you use per GB of data moved
+
+#### Example
+- SAN/NAS Storage is looking to transfer to AWS
+- A DataSync Agent runs on a virtualization platform such as VMWare and communicate with the AWS DataSync Endpoint
+  - Communicates with on-premises storage with NFS/SMB
+  - Encryption in transit to AWS with TLS
+  - Schedules can be set to ensure transfer of data occurs during or avoiding specific time windows
+  - Customer impacts can be minimized by setting bandwidth limiters
+- Data enters the DataSync Endpoint and locations define the source or destination for the sync of data TO or From AWS
+  - ex. S3, EFS, FSx, NFS, SMB
+
+#### DataSync Components
+- Task
+  - A Job within DAtaSync, defines what is being synced, how quickly, from and to where
+- Agent 
+  - Software used to read or write to on-premises data stores using NFS or SMB
+- Location 
+  - Every task has 2 location From and To
+    - ex. Network File System (NFS), Server Message Block (SMB), Amazon EFS, Amazon FSx and Amazon S3
+
+>Video 13
+#### FSx for Windows File Server
+- AWS Support for Windows Environments
+- Fully managed native Windows file servers/shares
+- Designed for integration with Windows environments
+  - Can integrate with Directory Service or Self-Managed AD
+- Can be configured with Single or Multi-AZ within a VPC
+- On-Demand and Scheduled backups
+- Files are accessible using VPC, Peering, VPN, Direct Connect
+  - For exam, think about file systems or file sharing in Windows
+- FSx can integrate with either On-Premises or in AWS
+
+#### Key Features and Benefits
+- VSS - User-Driven Restores
+  - Users in workspace can view and restore versions of files
+- FSx provides a Native file system accessible over SMB (SMB = Windows)
+- Uses Windows permission Model
+- Supports DFS (Distributed File System)
+  - Scale-out file systems in Windows environments (scale out file structure)
+- Managed - no file server admin
+- Integrates with Directory Services and YOUR OWN Directory service (on premises)
+
+>Video 14
+#### FSx for Lustre
+- Managed Lustre - Designed for HPC - LINUX Clients (POSIX)
+  - Machine learning, Big data, Financial Modelling
+- 100's GB/s throughput and sub milliseconds latency
+- Deployment types - Persistent or Scratch
+  - Scratch
+    - Highly optimized for short term
+      - No replication and fast
+  - Persistent
+    - Long term, High Availability, Self Healing
+- Accessible over VPN or Direct Connect
+- FSx - Where data lives while processing occurs
+- Objects reside in the repository 
+  - S3
+- Data is "Lazy Loaded" from S3 (S3 Linked Repository) into the file system as needed
+- Data can be exported back to S3 using hsm_archive
+- Metadata is stored on Metadata Targets (MST)
+- Objects are stored on object storage targets (OSTs) (1.17TiB)
+- Baseline performance based on size
+- Size - Minimum 1.2TiB, then increments of 2.4TiB
+- For Scratch 
+  - Base 200MB/s per TiB of storage
+- For Persistent 
+  - 50MB/s, 100Mb/s and 200MB/s per TiB of storage
+  - Burst up to 1,300MB/S per TiB (credit system)
+
+#### Key Features and Benefits
+- Scratch is designed for pure performance
+  - Short Term or Temp workloads
+- No High Availability
+- No Replication
+- Larger file systems means more servers, more disks and more chance of failure
+- Persistent has replication within ONE AZ ONLY
+- Auto-heals when hardware failure occurs
+- You can backup to S3 with both products
+
+>Vedio 15
+#### AWS Transfer Family
+- Managed file transfer service
+  - Supports transferring TO and FROM S3 and EFS
+- Provides managed "Servers" which support protocols
+- Protocols that are support
+  - File Transfer Protocol (FTP) - Unencrypted file transfer
+  - File Transfer Protocol Secure (FTPS) - File transfer with TLS encryption
+  - Secure Shell (SSH) File Transfer Protocol (SFTP) - File transfer over SSH
+  - Applicability Statement 2 (AS2) - Structured B2B Data
+- Identities
+  - Service Managed
+  - Directory Service
+  - Custom (Lambda/APIGW)
+- Managed File Transfer Workflows (MFTW) - Serverless File Workflow Engine
+- 3 Different Endpoint types to connect AWS to
+  1) Public
+     - Dynamic IP (Can Change)
+     - Managed by AWS (use DNS)
+     - Cannot control access via IP Lists
+  2) VPC Internet
+     - Using Direct Connect (DX) or VPN
+     - Uses Security Groups and NACL for control
+        - SFTP
+        - FTPS
+  3) VPC Internal
+     - Using Direct Connect (DX) or VPN
+     - Uses Security Groups and NACL for control
+        - SFTP
+        - FTP
+        - FTPS
+- Multi-AZ - Resilient and scalable
+- Cost: Provisioned Server per Hour $ + Data Transferred $
+- FTP and FTPS - Directory Service or Custom IDP only
+- FTP - VPC Only (cannot be public)
+- AS2 VPC Internet/Internal Only
+- Used if you need to access S3/EFS, but with existing protocols
+- Used if iIntegrating with existing workflows
+- Used if using MFTW (Managed File Transfer Workflow feature) to create new ones
