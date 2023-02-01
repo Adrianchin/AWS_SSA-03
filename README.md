@@ -4396,8 +4396,12 @@ How an example works:
 ## Notes from Tutorial Dojo
 #### AWS Proton
 - Allows you to deploy any serverless or container-based application with increased efficiency, consistency and control. You can define inferastructure standards and effective confinuous delivery pipelines for your organization
-  - Proton breaks fown the infrastructure into environment and service (infrastructure as code templates)
+  - Proton breaks fomn the infrastructure into environment and service (infrastructure as code templates)
   - Basically, make components and attach to your services as needed
 - From TD:
   - In AWS Proton administrators define standard infrastructure that is used across development teams and applications. However, development teams might need to include additional resources for their specific use cases, like Amazon Simple Queue Service (Amazon SQS) queues or Amazon DynamoDB tables. These application-specific resources might change frequently, particularly during early application development. Maintaining these frequent changes in administrator-authored templates might be hard to manage and scale—administrators would need to maintain many more templates without real administrator added value. The alternative—letting application developers author templates for their applications—isn’t ideal either, because it takes away administrators’ ability to standardize the main architecture components, like AWS Fargate tasks. This is where components come in.
   - With a component, a developer can add supplemental resources to their application, above and beyond what administrators defined in environment and service templates. The developer then attaches the component to a service instance. AWS Proton provisions infrastructure resources defined by the component just like it provisions resources for environments and service instances.
+
+#### AWS SNS
+- You can filter SNS at the SUB level (in SQS) by enabling filtering and assigning topics to the JSON files in the messages
+  - Example - Assigning car insurance as "type:car" and then on the sub, having a filter for car
