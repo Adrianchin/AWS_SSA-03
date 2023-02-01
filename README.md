@@ -2895,8 +2895,8 @@ How an example works:
 >Video 17
 #### AWS Glue
 - A Serverless ETL (Extract, Transform and Load)
-  - This is vs. a dara pipeline (which can also do ETL) which uses a server (EMR)
-- Moves and tranforms data between source and destination
+  - This is vs. a data pipeline (which can also do ETL) which uses a server (EMR)
+- Moves and transforms data between source and destination
 - Crawls data sources and generates the AWS Glue Data Catalog
 - Sources:
   1) DStores: S3, RDS, JDBC compatible and DynamoDB
@@ -4403,5 +4403,44 @@ How an example works:
   - With a component, a developer can add supplemental resources to their application, above and beyond what administrators defined in environment and service templates. The developer then attaches the component to a service instance. AWS Proton provisions infrastructure resources defined by the component just like it provisions resources for environments and service instances.
 
 #### AWS SNS
-- You can filter SNS at the SUB level (in SQS) by enabling filtering and assigning topics to the JSON files in the messages
+- You can filter SNS at the SUB level (in SQS) by enabling a filter policy and assigning topics to the JSON files in the messages
   - Example - Assigning car insurance as "type:car" and then on the sub, having a filter for car
+- You can create 1 SNS topic and use the filters instead of using multiple SNS and SQS with the default option to listen to all    
+
+#### Simple Workflow Service (SWF) 
+- Service that makes it easy to coordinate work across distributed application components using visual workflows
+- You define state machines that describe your workflow as a series of steps, their relationships and their inputs and their input and outputs
+
+#### Networking
+- AAAA records - IPv6
+- A - IPv4 Records
+- ALIAS - Points a domain to a resource, AWS SPECIFIC <- similar to CNAME but for AWS 
+- CNAME - Points a DNS Query to a different DNS Record
+
+#### VPC Tips
+- For launching specific VPC subnets, you MUST specify a range of IPv4 addresses for the VPC in the form of a CIDR block
+  - Each subnet MUST reside entirely within the AZ
+  - The IPv6 (and CIDR block) is an option
+  - ALL Subnets NEED A IPv4 CIDR RANGE!
+
+#### AWS Big Data
+- Amazon EMR - a managed cluster platform that simplifies running big data framework (such as Hadoop) to process data
+
+#### Security Groups vs NACL
+- Security Groups - Protect EC2 instances (firewall)
+  - Support allow rules only
+- NACL - Subnet protection (firewall)
+  - Supports allow and deny rules
+
+#### Elastic IP vs Static IP
+- Static IPs
+  - IP Addresses that do not change
+  - Are public IP addresses
+- Elastic IPs
+  - Similar to Static IPs where
+    - They are not changing
+    - Are publically routable
+  - EXCEPT
+    - They are AWS IP addresses in a pool
+    - Associated with the region and CANNOT leave the region
+    - Can be assigned to EC2 instances (and Network Load Balancers)
