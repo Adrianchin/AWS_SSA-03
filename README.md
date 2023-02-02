@@ -2127,7 +2127,7 @@ The 2 options between no select and select
   1) Full load (one off migration of all data)
   2) Full Load + CDC (Change Data Capture) for ongoing replication which captures changes
      - Used and once you are up to date, you can transition off the old on onto the new
-  3) CDC Only (Change Data Capture) - If you want to use an alternative tool to mirate your data, and then you want to keep an ongoing replication to keep the new database up to date
+  3) CDC Only (Change Data Capture) - If you want to use an alternative tool to migrate your data, and then you want to keep an ongoing replication to keep the new database up to date
      - Say you bulk transport using something like snowball
 - Schema Conversion Tool (SCT) can assist with Schema Conversion
   - Allows you to migrate from 1 database engine to another
@@ -2142,7 +2142,7 @@ The 2 options between no select and select
 - ex. On-premises MSSQL -> RDS MySQL or Aurora
 
 #### DMS and Snowball
-- Larget migrations might be multi TB in size
+- Largest migrations might be multi TB in size
   - Moving data over networks takes up too much time and capacity
 - DMS can utilize AWS SnowBall
 1) Use SCT to extract data locally and move to a snowball device
@@ -3435,7 +3435,7 @@ How an example works:
   - Having multiple VPCs and a customer connections, you would need
     - peer-to-peer connections for EACH VPC (many)
     - Customer Gate Way connections for each VPC
-      - Might want 2+ Customer Gatewats, which means more connections
+      - Might want 2+ Customer Gateways, which means more connections
     - Scales poorly
   - A transit gateway uses a side-side gateway router
     - Instead of the VPC connecting to the CGW, the Transit Gateway is used as the attachment that connects the VPCs to the Customer Gateways
@@ -4444,3 +4444,99 @@ How an example works:
     - They are AWS IP addresses in a pool
     - Associated with the region and CANNOT leave the region
     - Can be assigned to EC2 instances (and Network Load Balancers)
+
+#### Fargate
+- By default, Fargate tasks are given a minimum of 20 Gb of free ephemeral storage
+  - Task - What Fargate is running (The EC2 in Fargate) - Use definitions to configure tasks
+
+#### Gateway Endpoints vs Interface Endpoints
+- Gateway Endpoint
+  - Connects your private VPC to public AWS services
+  - Does NOT work for on premises
+  - Free
+- Interface Endpoints (Private Link)
+  - Connects your private VPC OR on premises network to public AWS services
+  - Costs Money
+
+#### Customer Gateways 
+- Used to connect Site-to-Site VPN in your on-premise network
+
+#### RDS
+- RDS Storage Auto Scaling - Automatically scales storage capacity in response to growing database workloads with zero downtime
+
+#### Serverless Databases
+- You cannot change instances classes from Provisioned to Serverless
+
+#### SSH
+- Layer 7 Secure Access Protocol
+- Uses Port 22
+
+#### Transit Gateway
+- Allows you to consolidate and control an organizations entire AWS routing configuration in 1 place
+  - No need to VPN Peer-to-Peer and worry about multiple customer gateways
+
+#### AWS Backup
+- Service that allows you to back-up your application data across AWS services in the AWS cloud.
+- Centralized backup service to protect AWS Storage Volumes, Databases and File Systems
+- Lets you define a Point In Time Recovery
+- Note that Automatic backups provided in EDS is only for 35 days
+
+#### S3 Glacier
+- Expedited Retrievals - Allows you to auickly access data when there is an occasional urgent request
+- Provisioned Capacity - Ensures you have retrieval capacity for expedited retrievals when you need it
+
+#### EC2
+- EBS volumes are automatically deleted when an instance terminates UNLESS you set DeleteOnTermination to false
+- You are limited to running On-Demand instances per your vCPU-based On-Demand instance limit
+  - Limit per region
+- Limit of 20 reserved instance purchases
+  - Limit per region
+- Hibernation mode
+  - EC2 mode (along with stop, running etc.) where you only pay for the EBS volumes and Elastic IP address attached. No hourly charge
+  - It is not possible to enable or disable hibernation for an instance after it has launched
+
+#### S3
+- Note: Encrypting on EBS and then coping data to S3 does NOT mean the data is encrypted when it is in S3! You need to encrypt the S3 Bucket you store the data in
+  - S3 does NOT use EBS to store the data, hence the encryption issue
+
+#### EBS
+- If you encrypt your EBS, it just means the data is encrypted while in EBS. If it moves out of EBS (say into S3), you NEED to encrypt S3, or client side encrypt all data
+
+### Elastic Fabric Adapters
+- A network device that you can attach to your EC2 instance to accelerate high performance compute and machine learning applications
+
+#### AWS MQ
+- Message service for AWS - Public Event and Public Message application (Mass email updates or marketing)
+
+### Kinesis Data Analysis
+- The full fancy version of Kinesis that does data transformation between multiple sources and shit
+- Not to be confused with Kinesis Data Streams - Just regular Kinesis
+
+#### AppSync 
+- Manages data access from one or more sources or microservices with a single network request
+- Unified API
+
+#### Amazon EKS Anywhere
+- K8s service in Amazon that allows customers to create and operate K8s clusters on customer managed infrastructure
+
+#### Secrets Manager vs Parameter Store
+- Secrets manager costs money, Parameter store is free
+- If you are storing mostly parameters, use parameter store
+- Secret manager can rotate secrets automatically
+
+#### Network ACL and Rules
+- When you create an outbound rule for a request, you MUST include the ephemeral ports that you will be requesting to. These are (32768 - 65535)
+  - ex. Response to anywhere, outbound rule is TCP connection on port 32768 - 65535 to destination 0.0.0.0/0 (ephemeral ports to anywhere)
+
+#### R53
+- Active-Active Failover
+  - Use this failover configuration when you want all your resources to be available the majority of the time. Will detect unhealthy endpoints and not include them for responses
+  - All records have the same name, same type (A or AAA) and same routing policy (such as weighted or latency)
+- Active-Passive Failover
+  - Use this failover when you want a primary resource or group of resources to be available the majority of the time and want a secondary resource or group to be on standby in case of failure
+
+#### CloudFront
+- SNI Custom SSL relies on the SNI extension of the Transport Layer Security protocol, allowing multiple domains to serve SSL traffic over the same IP address using the hostname which the view is trying to access
+  - Requires binding certificates to the Application Load Balancer, and the ALB will choose the optimal TSL certificate using Server Name Indication (SNI)
+- ex. The catagram vs dogogram example in Cantril
+
