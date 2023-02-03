@@ -4410,6 +4410,7 @@ How an example works:
 #### Simple Workflow Service (SWF) 
 - Service that makes it easy to coordinate work across distributed application components using visual workflows
 - You define state machines that describe your workflow as a series of steps, their relationships and their inputs and their input and outputs
+- Assigns workers based on your workflow, prevents duplication of tasks 
 
 #### Networking
 - AAAA records - IPv6
@@ -4425,6 +4426,7 @@ How an example works:
 
 #### AWS Big Data
 - Amazon EMR - a managed cluster platform that simplifies running big data framework (such as Hadoop) to process data
+  - Amazon EMR = Elastic Map Reduce - To transform data and move for Big Data applications
 
 #### Security Groups vs NACL
 - Security Groups - Protect EC2 instances (firewall)
@@ -4463,6 +4465,8 @@ How an example works:
 
 #### RDS
 - RDS Storage Auto Scaling - Automatically scales storage capacity in response to growing database workloads with zero downtime
+- Read replica and promoting to primary instance - Is not automatic, for auto failover you need a standby replica
+- Sharding - Distributing parts of your database across multiple instances. Helps with speed.
 
 #### Serverless Databases
 - You cannot change instances classes from Provisioned to Serverless
@@ -4494,6 +4498,8 @@ How an example works:
 - Hibernation mode
   - EC2 mode (along with stop, running etc.) where you only pay for the EBS volumes and Elastic IP address attached. No hourly charge
   - It is not possible to enable or disable hibernation for an instance after it has launched
+- When you launch an EC2 in a default VPC, it will be provided a public and private DNS hostname associated with the public IPv4 address of the instance
+- When you launch a instance in a non-default VPC, AWS provides the instance with a private DNS hostname only
 
 #### S3
 - Note: Encrypting on EBS and then coping data to S3 does NOT mean the data is encrypted when it is in S3! You need to encrypt the S3 Bucket you store the data in
@@ -4506,7 +4512,8 @@ How an example works:
 - A network device that you can attach to your EC2 instance to accelerate high performance compute and machine learning applications
 
 #### AWS MQ
-- Message service for AWS - Public Event and Public Message application (Mass email updates or marketing)
+- Message service for AWS - A service that does SQS and such but is not AWS SQS (ex. a vendor messaging system)
+  - Runs in an instance (need to run in multi-AZ for HA)
 
 ### Kinesis Data Analysis
 - The full fancy version of Kinesis that does data transformation between multiple sources and shit
@@ -4540,3 +4547,31 @@ How an example works:
   - Requires binding certificates to the Application Load Balancer, and the ALB will choose the optimal TSL certificate using Server Name Indication (SNI)
 - ex. The catagram vs dogogram example in Cantril
 
+#### License Manager
+- Used for creating and managing licensing rules and preventing overages
+
+#### Load Balancers
+- For TCP or UCP (or TLS) use network load balancers
+  - TCP - Normal, stable, accurate
+  - UCP - fast, inaccurate
+
+#### AWS Health
+- Provides ongoing visibility into your resources performance and availability of your AWS services and accounts
+
+#### AWS Service Health 
+- Shows public events that could affect several customers in a particular region
+
+#### Instance Store Volumes
+- RAID 0 - Used for storing data across volumes. Maximizes IOPS
+- RAID 1 - Replicates data across volumes
+
+#### AWS KMS-Managed Keys
+- Only way to get a complete auditable of your key logs
+- AWS-KMS - KMS Key makes a object key for each object and stores them with the object
+  - Called "Envelope encryption"
+
+#### AWS Application Migration Service (MGN)
+- primary migration service recommended for lift-and-shift
+- AWS MGN enables allows organizations to move applications to AWS without making changes to the applications, architectures or migrated servers
+- Migration is done by installing the AWS Replication Agent on your source servers
+  - Note: DataSync is for datasets (databases) and NOT applications/Virtual Machines
