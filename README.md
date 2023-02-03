@@ -2366,7 +2366,7 @@ How an example works:
   1) Simple Scaling - Add or remove a set amount based on an alarm (linear)
   2) Step Scaling - Add or remove different amounts based on an alarm (non-linear) 
   3) Target Tracking - Define an ideal value and the ASG will calculate adjustments to try to keep the metric at your target value
-  5) Scaling based on SQS - ApproximateNumberOfMessagesVisible
+  4) Scaling based on SQS - ApproximateNumberOfMessagesVisible
 
 >Video 8
 #### ASG Lifecycle Hooks
@@ -3571,7 +3571,7 @@ How an example works:
   - Standalone directory which uses Samba 4
   - Support up to 500 users for small and 5000 users for large
   - Integrates with AWS services
-    - EC2 intances can join SimpleAD and Workspaces can use it for logins and management
+    - EC2 instances can join SimpleAD and Workspaces can use it for logins and management
     - Not designed to integrate with any existing on-premises directory systems such as Microsoft AD
 - #### AWS Managed Microsoft AD
   - Amazon Workspaces can connect with Microsoft AF Mode, which connects to on-premises directory systems
@@ -3586,7 +3586,7 @@ How an example works:
     - You can use AD Connector to VPN to point back to your on-premises directory
   - Primary directory is located on-premises
   - If private connectivity fails, the AD Proxy will NOT function
-    - inturruption of services
+    - interruption of services
 
 #### When to use which Mode
 - Simple AD
@@ -4416,6 +4416,7 @@ How an example works:
 - AAAA records - IPv6
 - A - IPv4 Records
 - ALIAS - Points a domain to a resource, AWS SPECIFIC <- similar to CNAME but for AWS 
+  - In general, always use Alias in AWS for resources
 - CNAME - Points a DNS Query to a different DNS Record
 
 #### VPC Tips
@@ -4478,6 +4479,9 @@ How an example works:
 #### Transit Gateway
 - Allows you to consolidate and control an organizations entire AWS routing configuration in 1 place
   - No need to VPN Peer-to-Peer and worry about multiple customer gateways
+- Enables you to scale the IPsec VPN throughput with equal-cost multi-path (ECMP) routing support over multiple VPN tunnels. 
+  - A single tunnel has a maximum throughput of 1.25Gbps. ECMP-enabled transit gateways scale beyond the default 1.25 Gbps
+  - ECMP deploys multiple equal-cost routes to load balance traffic (sessions) to the same destination (throughput increases)
 
 #### AWS Backup
 - Service that allows you to back-up your application data across AWS services in the AWS cloud.
@@ -4500,16 +4504,34 @@ How an example works:
   - It is not possible to enable or disable hibernation for an instance after it has launched
 - When you launch an EC2 in a default VPC, it will be provided a public and private DNS hostname associated with the public IPv4 address of the instance
 - When you launch a instance in a non-default VPC, AWS provides the instance with a private DNS hostname only
+- Lifecycles and CloudWatch Agent
+  - You can set up lifecycle hooks (ex. autoscale:EC2_INSTANCE_TERMINATING) from the auto scale group, which will move from the state (ex. terminating) to the next state that you define (Terminating:Wait)
+  - These events can be collected by the agent and the logs can be pushed, and then the instance termination will complete
+  - Allow you to complete tasks between states (typically between startup or terminating)
 
 #### S3
 - Note: Encrypting on EBS and then coping data to S3 does NOT mean the data is encrypted when it is in S3! You need to encrypt the S3 Bucket you store the data in
   - S3 does NOT use EBS to store the data, hence the encryption issue
+- Always scales to load! Throughput AND volume!
 
 #### EBS
-- If you encrypt your EBS, it just means the data is encrypted while in EBS. If it moves out of EBS (say into S3), you NEED to encrypt S3, or client side encrypt all data
+- If you encrypt your EBS, it just means the data is encrypted while in EBS.
+- Encryption occurs on the servers that host the EC2 instances, providing encryption of data as it moves between EC2 instances and EBS stores
+- Snapshots are automatically encrypted
+  - All volumes created from the snapshots are encrypted
+- EBS Volumes cannot be shared by multiple instances. You need a EFS to do that.
+- Snapshots do not prevent the EBS from operating - can do both at the same time
 
-### Elastic Fabric Adapters
-- A network device that you can attach to your EC2 instance to accelerate high performance compute and machine learning applications
+#### Elastic Network Interfaces
+- Every resource has an ENI
+- There are 3 types:
+  - Elastic Network Interface
+    - Normal ENI assigned to your resource, Free
+  - Elastic Network Adaptor
+    - An upgraded adaptor that increases networking speed for a resource <- only available on some resources (EC2)
+  - Elastic Fabric Adapters
+    - A network device that you can attach to your EC2 instance to accelerate high performance compute and machine learning applications
+    - Will default to a ENA with Windows. DO NOT USE WITH WINDOWS, waste of money
 
 #### AWS MQ
 - Message service for AWS - A service that does SQS and such but is not AWS SQS (ex. a vendor messaging system)
@@ -4521,10 +4543,21 @@ How an example works:
 
 #### AppSync 
 - Manages data access from one or more sources or microservices with a single network request
+- A serverless GraphQL and Pub/Sub API service that simplifies building modern web and mobile applications
+  - To use the AWS ApppSync API, two endpoints are provisioned
+    1) AWS AppSync GraphQL endpoint - used for GraphQL queries
+    2) AWS AppSync real-time Endpoint - Used for real-time APIs
 - Unified API
+- GraphQL
+  - A SQL Query language (and structure) that allows you to specify exactly what data you need returned
 
 #### Amazon EKS Anywhere
 - K8s service in Amazon that allows customers to create and operate K8s clusters on customer managed infrastructure
+
+#### K8 Authenticator
+- Amazon EKS uses IAM to provide authentication to your K8s cluster, but still relies on native K8s Role Based Access Control for authorization
+  - IAM is only used for authentication of calid IAM entities. All permissions for interacting with Amazon EKS clusters K8s APIs are managed through the native RBAC system
+  - Access to a cluster using AWS IAM entities is enabled by AWS IAM Authenticator for Kubernetes (runs on Amazon EKS control plane)
 
 #### Secrets Manager vs Parameter Store
 - Secrets manager costs money, Parameter store is free
@@ -4575,3 +4608,74 @@ How an example works:
 - AWS MGN enables allows organizations to move applications to AWS without making changes to the applications, architectures or migrated servers
 - Migration is done by installing the AWS Replication Agent on your source servers
   - Note: DataSync is for datasets (databases) and NOT applications/Virtual Machines
+
+#### Trusted Advisor
+- AWS service that provides recommendations to help you follow AWS best practice using checks
+  - Cost optimization
+  - Performance
+  - Security
+  - Fault tolerance
+  - Service Limits
+- Can integrate with CloudWatch and call an alarm and tie in EventBridge
+- Can use a Lambda function to refrech the AWS Trusted Advisor service checks (ex. utilization and quota limiting checks)
+
+#### AWS CloutTrail - Data Events vs Management Events
+- Data Events - Provide visibility into the resource operations performed on or within a resource
+- Management Events - Provide visibility into management operations that are performed on a resource in your AWS account
+
+#### Load Balancers
+- Load balancers sent checks to the instances it is connected to. If it is not in a "healthy" state, it stops routing to that instance. These are dependent on the instance health configuration.
+- For Route53, you should point the A record to load balancers with the alias and NOT the direct IP address, as the IP address can change
+  - Alias - AWS implementation of a pseudo CNAME of a way to refer to AWS resource itself
+  - Always default to using Alias for all AWS infra
+
+#### Network Load Balancers vs Application Load Balancers
+- Application load balancers can use weighted routing, using the private IP's as the routable addresses. Note that it CANNOT use public addresses (as what is behind the ALB is private)
+- Network Load Balancers CANNOT use weighted routing
+
+#### S3 Select and Glacier Select
+- Think SQL "Select" - Method used to query data in S3 or Glacier
+
+#### File Gateway
+- File Gateway - Uses NFS and SMB
+  - Used to expand your storage into the cloud (usage)
+- Storage Gateway - Used to have backups, unable to use file structures
+- Use a physical hardware or a virtualized agent to upload data
+
+#### For Lifecycle policy
+- You can set transition to Glacier after 0 days
+
+#### VPC Peering
+- VPC Peering requires setting up VPC Peering on the 2 VPCs and reconfiguring the route table to point at the other instance's subnet
+- Information travels on the AWS network (does not go on public internet)
+
+#### IAM
+- Note: You can reference resource tags in policies
+- IAM works with DB Authentication using AWS IAM Database Authentication
+  - MySQL and PostgreSQL
+  - Dont need password to connect to a DB: uses an authentication token instead
+
+#### AWS Glue
+- Used to Extract, Transform and Load data (ETL) for data analytics
+
+#### Scaling
+- Note that you can warm up instances before they are included in metrics
+  - Will ensure that the instances do not throw your metrics off for tracking/scaling
+
+### Amazon CloudWatch Application Insights
+- Facilitates observability for your applications and underlying AWS resources. t helps you set up best practice monitoring for application resources. 
+  - AI and ML powered application recommendation service for configuration and logs
+
+#### AWS Systems Manger Run Command
+- Lets you remotely and securely manage the configuration of your managed instance
+  - Allows you to access resources from AWS console, AWS CLI, AWS tools for Windows Powershell or AWS SDKs
+
+#### AWS Wavelength 
+- Combines the high bandwidth and ultra low latency of 5G networks with AWS compute and storage services
+  - Allows application traffic to reach application servers running in Wavelength Zones without leaving the mobile providers network
+
+#### CloudTrail
+- By default, event log files are encrypted in S3 using Server-Side Encryption
+
+#### Lifecycle policies
+- You cannot create a lifecycle rule to transition objects to either STANDARD_IA or ONEZONE_IA storage class in under 30-days
