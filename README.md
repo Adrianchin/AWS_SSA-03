@@ -352,6 +352,7 @@ How it works
 - How it works
   - Control tower is managed inside the Management Account
     - Single Sign On (SSO) operates inside the management account that allows Federation ID and internal ID signon
+      - SSO - Multi account access to your AWS accounts
   - AWS Organizations creates 2 OU's
     1) Foundational OU
        1) Audit account
@@ -1033,14 +1034,14 @@ The 2 options between no select and select
 #### S3 Storage
 - Direct (local) attached storage - Storage on EC2 hosts
 - Network attached storage - Volumes delivered over the network (EBS)
-- Ephemeral storage - Temporary storage
-- Persistent storage - Permanent storage - lives on past the lifetime of the instance
+- Ephemeral storage - Temporary storage - Instance Store
+- Persistent storage - Permanent storage - lives on past the lifetime of the instance - EBS
 
 #### Key terms
-- Block storage - Volume presented to the OS as a collection of blocks. No structure is provided. 
-  - Mountable and bootable.
+- Block storage - Volume presented to the OS as a collection of blocks. No structure is provided. Just a collection of addressable blocks. 
+  - Mountable and bootable. Your OS will configure this into a file system and this is what a bootable drive is
 - File storage - Presented as a file share. Has structure. 
-  - Mountable. NOT bootable
+  - Mountable. NOT bootable. OS does not have low level access to the file system
 - Object storage - Collection of objects. Flat storage 
   - Not mountable. Not bootable
 
@@ -1062,7 +1063,7 @@ The 2 options between no select and select
   - Instances see a block device and creates a file system on this device (ext3/4, xfs)
 - Storage is provisioned in One AZ. Isolated to that AZ. Resilient in that AZ
 - Attach a volume to one EC2 instance at a time (or other service) over a storage network. (can be attached to clusters but it needs to be controlled by the cluster to not overwrite stuff)
-  - Can be deteched and reattached and is not lifecycle linked to one instance. Persistant
+  - Can be detatched and reattached and is not lifecycle linked to one instance. Persistent
 - Snapshot (backups) into S3. Can create a volume from a snapshot (migrate between AZs)
 - Different physical storage types, different sizes, different performance profiles
 - Billed based on GB/month (and sometimes by performance)
@@ -1140,7 +1141,6 @@ The 2 options between no select and select
   - There is no risk of losing data if you delete an incremental snapshot. Each snapshot can be thought of as self sufficient
   - Volumes can be created (restored) buy snapshots
   - Snapshots can be copied between regions
-
 #### EBS Snapshot/Volume Performance
 - New EBS Volume = full performance immediately
 - Snapshots restore lazily - fetched gradually
@@ -2719,7 +2719,7 @@ How an example works:
 
 >Video 11, 12 , 13 and 14
 #### Simple Queue Service (SQS)
-- Public, Fully MAnaged, Highly Available Queues
+- Public, Fully Managed, Highly Available Queues
   - 2 Types
     1) Standard
         - Order does not matter, faster
@@ -3695,7 +3695,7 @@ How an example works:
 - Auto-heals when hardware failure occurs
 - You can backup to S3 with both products
 
->Vedio 15
+>Video 15
 #### AWS Transfer Family
 - Managed file transfer service
   - Supports transferring TO and FROM S3 and EFS
