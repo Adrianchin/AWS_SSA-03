@@ -3778,7 +3778,7 @@ How an example works:
 >Video 3
 #### Web Application Firewall (WAF)
 - Protects web applications 
-  - CloudFront, Application Load Balancer, AppSync, API Gateway
+  - #### CloudFront, Application Load Balancer, AppSync, API Gateway
 - Configured in the Web ACL
   - Use Rules within Rule Groups (within WEB ACL)
   - You can manually update Rules
@@ -4468,6 +4468,7 @@ How an example works:
 - RDS Storage Auto Scaling - Automatically scales storage capacity in response to growing database workloads with zero downtime
 - Read replica and promoting to primary instance - Is not automatic, for auto failover you need a standby replica
 - Sharding - Distributing parts of your database across multiple instances. Helps with speed.
+- Enhanced Monitoring is a RDS available metric only
 
 #### Serverless Databases
 - You cannot change instances classes from Provisioned to Serverless
@@ -4679,3 +4680,9 @@ How an example works:
 
 #### Lifecycle policies
 - You cannot create a lifecycle rule to transition objects to either STANDARD_IA or ONEZONE_IA storage class in under 30-days
+
+#### CloudWatch Enhanced Monitoring
+- RDS available metric only
+  - Cloudwatch gathers it's metrics from an agent on the instance
+- Normal CloudWatch for RDS
+  - Gathers metrics about utilization from the hypervisor
