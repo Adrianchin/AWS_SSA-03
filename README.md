@@ -1569,7 +1569,7 @@ The 2 options between no select and select
 - Increases bandwidth
 - Much higher I/O and lower Host CPU usage
 - Higher package-per-second (PPS)
-- No charge - available on most EC2 types
+- #### No charge - available on most EC2 types
 - Consistent lower latency
 
 #### EBS Optimized instances
@@ -2000,6 +2000,7 @@ The 2 options between no select and select
 >Video 11
 #### Amazon Aurora Architecture
 #### Amazon Aurora Provisioned (non-serverless)
+- Is a serverless solution - Cannot be run on EC2
 - Very different from RDS
   - Uses a "Cluster"
 - A single primary instance but +0 or more replicas
@@ -4514,6 +4515,8 @@ How an example works:
 - Note: Encrypting on EBS and then coping data to S3 does NOT mean the data is encrypted when it is in S3! You need to encrypt the S3 Bucket you store the data in
   - S3 does NOT use EBS to store the data, hence the encryption issue
 - Always scales to load! Throughput AND volume!
+- S3 Objects are owned by the AWS account that uploads it by default
+  - For the bucket owner to gain full access, the object owner must explicitly give the bucket owner access. This can be done wiht a bucket policy
 
 #### EBS
 - If you encrypt your EBS, it just means the data is encrypted while in EBS.
@@ -4655,6 +4658,10 @@ How an example works:
 - IAM works with DB Authentication using AWS IAM Database Authentication
   - MySQL and PostgreSQL
   - Dont need password to connect to a DB: uses an authentication token instead
+  - IAM DB Authentication provides the following benifits:
+    - Network traffic to and from the DB is encrypted with SSL (Secured Socket Layer)
+    - You can use IAM to centrally manage access to DB resources (instead of individually managing DBs)
+    - For applications running on EC2, you can use profile credentials specific to the EC2 instance to access the DB instead of passwords
 
 #### AWS Glue
 - Used to Extract, Transform and Load data (ETL) for data analytics
@@ -4686,3 +4693,58 @@ How an example works:
   - Cloudwatch gathers it's metrics from an agent on the instance
 - Normal CloudWatch for RDS
   - Gathers metrics about utilization from the hypervisor
+
+#### Ports on EC2
+- Port 3389
+  - For Remote Desktop Protocol
+- Port 22
+  - For SSH connection 
+
+#### Apache Parquet Format
+- Columnar based format (as opposed to row formats) - Used in Athena and Redshift
+- Faster
+- Also see ORC file formats
+  - Transform to column format for faster reads (Athena)
+
+#### ACL vs Security Groups
+- ACL 
+  - Stateless
+  - Allow rules and deny rules
+  - Subnet level
+  - Applies to all instances in subnet
+  - Evaluates rules in order, lowest to highest
+- Security Groups
+  - Stateful
+  - Only allow rules
+  - Instance level
+  - Applies to an instance only if it is associated with an instance
+  - Evaluates all rules before deciding to allow traffic through
+
+#### Aurora Cloning vs RDS Snapshots
+- Aurora cloning is faster
+- Aurora cloning is more cost effective
+
+#### S3 IA Types
+- IA has a minimum 30 day storage duration cost (you will be billed for 30 days)
+- Standard has NO minimum duration requirement
+
+#### Global Accelerator 
+- Provides a static anycast IP address that you can connect to
+- Requires endpoint groups - the IP that the Global Accelerator will connect to
+  - In many cases, this is an ALB
+  - This reduces the amount of IPs the backend will have to account for in the firewall network ACL 
+
+#### Elastic Load Balancing
+- Cross zone load balancing - Where load balancers in front of your AZ will distribute loads across their AZ
+- Accounts for all load across AZs. If turned off, the distribution will be considered ONLY within the AZ the node resides in
+  - Used when you have a layer with multiple AZs for HA
+  - Requires it to be turned on. 
+  - If turned off, it will only Load Balance between the AZ the node resides in
+
+#### AWS Health
+- Events generated related to the health of your services
+- ACM certification events are generated when a certificate is renewed OR
+- ACM certification events are generated when a certificate must be renewed 
+  1) Certificate has been renewed, 
+  2) has expired or 
+  3) is due to expire (45 days prior to expiration)
