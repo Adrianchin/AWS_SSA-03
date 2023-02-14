@@ -4760,7 +4760,8 @@ How an example works:
 - Cross zone load balancing - Where load balancers in front of your AZ will distribute loads across their AZ
 - Accounts for all load across AZs. If turned off, the distribution will be considered ONLY within the AZ the node resides in
   - Used when you have a layer with multiple AZs for HA
-  - Requires it to be turned on. 
+  - ALB - Always turned on by default
+  - NLB and GLB - Requires it to be turned on. 
   - If turned off, it will only Load Balance between the AZ the node resides in
 
 #### AWS Health
