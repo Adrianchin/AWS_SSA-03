@@ -2300,6 +2300,7 @@ How an example works:
 - Forward TCP to instances <- Unbroken encryption (HTTPs will be handled at the resource)
 - Use with private link to provide services to other VPCs
 
+### Important for Exam!
 #### ALB vs NLB (Why you would use a NLB over an ALB)
 1) Unbroken encryption - NLB
 2) Static IP for whitelisting - NLB
@@ -4406,7 +4407,8 @@ How an example works:
 #### AWS SNS
 - You can filter SNS at the SUB level (in SQS) by enabling a filter policy and assigning topics to the JSON files in the messages
   - Example - Assigning car insurance as "type:car" and then on the sub, having a filter for car
-- You can create 1 SNS topic and use the filters instead of using multiple SNS and SQS with the default option to listen to all    
+- You can create 1 SNS topic and use the filters instead of using multiple SNS and SQS with the default option to listen to all
+  - Filter at SNS!
 
 #### Simple Workflow Service (SWF) 
 - Service that makes it easy to coordinate work across distributed application components using visual workflows
@@ -4425,6 +4427,7 @@ How an example works:
   - Each subnet MUST reside entirely within the AZ
   - The IPv6 (and CIDR block) is an option
   - ALL Subnets NEED A IPv4 CIDR RANGE!
+- You REQUIRE subnets to be IPv4 or IPv4 AND IPv6. You CANNOT do IPv6 ONLY subnets
 
 #### AWS Big Data
 - Amazon EMR - a managed cluster platform that simplifies running big data framework (such as Hadoop) to process data
@@ -4631,11 +4634,16 @@ How an example works:
 - Load balancers sent checks to the instances it is connected to. If it is not in a "healthy" state, it stops routing to that instance. These are dependent on the instance health configuration.
 - For Route53, you should point the A record to load balancers with the alias and NOT the direct IP address, as the IP address can change
   - Alias - AWS implementation of a pseudo CNAME of a way to refer to AWS resource itself
-  - Always default to using Alias for all AWS infra
+  - Always default to using Alias for all AWS infra 
+- For any internet facing (public facing) Elastic load balancers (Application or Network), it will require a public subnet (as the subnet is interacting with the IGW and elastic load balancer)
+  - The load balancer uses nodes in the public subnet to connect to resources. This can then be re-routed via the route tables to the private subnet
+  - https://docs.aws.amazon.com/prescriptive-guidance/latest/load-balancer-stickiness/subnets-routing.html
 
 #### Network Load Balancers vs Application Load Balancers
 - Application load balancers can use weighted routing, using the private IP's as the routable addresses. Note that it CANNOT use public addresses (as what is behind the ALB is private)
 - Network Load Balancers CANNOT use weighted routing
+- Network Load Balancers can have static IP's - useful for whitelisting
+- Network Load Balancers are used to provide private link to other VPCs
 
 #### S3 Select and Glacier Select
 - Think SQL "Select" - Method used to query data in S3 or Glacier
@@ -4652,6 +4660,7 @@ How an example works:
 #### VPC Peering
 - VPC Peering requires setting up VPC Peering on the 2 VPCs and reconfiguring the route table to point at the other instance's subnet
 - Information travels on the AWS network (does not go on public internet)
+- VPC Peering is ONLY FOR AWS VPCs. You CANNOT connect this to your on premises network. That requires a DX connection and client gateway or transit gateway 
 
 #### IAM
 - Note: You can reference resource tags in policies
@@ -4748,3 +4757,8 @@ How an example works:
   1) Certificate has been renewed, 
   2) has expired or 
   3) is due to expire (45 days prior to expiration)
+
+#### Data Lifecycle Manager
+- Used for EBS snapshots
+- Automate the creation, retention and deletion of EBS snapshots and EBS backed AMIs. 
+- Not to be confused with S3 Lifecycle Configuration, which schedules S3 lifecycle of storage types
