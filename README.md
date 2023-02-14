@@ -2001,6 +2001,7 @@ The 2 options between no select and select
 #### Amazon Aurora Architecture
 #### Amazon Aurora Provisioned (non-serverless)
 - Is a serverless solution - Cannot be run on EC2
+- For MySQL and PostgreSQL
 - Very different from RDS
   - Uses a "Cluster"
 - A single primary instance but +0 or more replicas
