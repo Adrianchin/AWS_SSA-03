@@ -4436,8 +4436,10 @@ How an example works:
 #### Security Groups vs NACL
 - Security Groups - Protect EC2 instances (firewall)
   - Support allow rules only
+  - Evaluates all rules
 - NACL - Subnet protection (firewall)
   - Supports allow and deny rules
+  - Evaluates rules from lowest to highest. When a rule matches, evaluations are complete
 
 #### Elastic IP vs Static IP
 - Static IPs
@@ -4524,10 +4526,11 @@ How an example works:
 #### EBS
 - If you encrypt your EBS, it just means the data is encrypted while in EBS.
 - Encryption occurs on the servers that host the EC2 instances, providing encryption of data as it moves between EC2 instances and EBS stores
-- Snapshots are automatically encrypted
+- Snapshots are automatically encrypted when an EBS volume is encrypted
   - All volumes created from the snapshots are encrypted
 - EBS Volumes cannot be shared by multiple instances. You need a EFS to do that.
 - Snapshots do not prevent the EBS from operating - can do both at the same time
+- There is no way to make an encrypted EBS unencrypted, or make an unencrypted EBS encryped. However, you can migrate data between encrypted and unencrypted EBS volumes
 
 #### Elastic Network Interfaces
 - Every resource has an ENI
@@ -4703,11 +4706,20 @@ How an example works:
 - Normal CloudWatch for RDS
   - Gathers metrics about utilization from the hypervisor
 
+#### CloudWatch Agent
+- Unified CloudWatch Agent collects logs and advanced metrics with installation and configuration of just 1 agent
+- Can be installed in 3 ways: 
+  1) Via Command Line
+  2) Via SSM Agent
+  3) Via AWS CloudFormation
+- Use CloudWatch Log Insights to view CloudWatch Agent generated Logs
+  - CloudWatch SSM Agent (Systems Manager) is used to install and update EC2 instances individually - Replaced by unified agent
+
 #### Ports on EC2
 - Port 3389
   - For Remote Desktop Protocol
 - Port 22
-  - For SSH connection 
+  - For SSH connection (think SS = 22)
 
 #### Apache Parquet Format
 - Columnar based format (as opposed to row formats) - Used in Athena and Redshift
@@ -4752,6 +4764,8 @@ How an example works:
 
 #### AWS Health
 - Events generated related to the health of your services
+  - Personal Health - Health of your personal services (ex. EC2 instances)
+  - AWS Service Health - Shows public events that may affect several customers in a region
 - ACM certification events are generated when a certificate is renewed OR
 - ACM certification events are generated when a certificate must be renewed 
   1) Certificate has been renewed, 
