@@ -1,4 +1,4 @@
-# Cantrel SSA-03 Notes
+# Cantrel SAA-03 Notes
 
 ## AWS Fundamentals
 
