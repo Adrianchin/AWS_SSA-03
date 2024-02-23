@@ -1,6 +1,6 @@
 # Cantrel SAA-03 Notes
 
-## AWS Fundamentals
+## AWS Fundamentals 
 
 > Video 1:
 
